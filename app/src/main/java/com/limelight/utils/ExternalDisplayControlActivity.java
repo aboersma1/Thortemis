@@ -470,12 +470,34 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
      * through the stream. It sits between the corner buttons, so they stay reachable.
      */
     private void createActionPad() {
-        actionPad = new ExternalActionPadView(this, (vk, down, modifiers) -> {
-            Game game = Game.instance;
-            if (game == null || game.conn == null) {
-                return;
+        actionPad = new ExternalActionPadView(this, new ExternalActionPadView.KeySink() {
+            @Override
+            public void sendKey(short vk, boolean down, byte modifiers) {
+                Game game = Game.instance;
+                if (game != null && game.conn != null) {
+                    game.conn.sendKeyboardInput(vk, down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP, modifiers, (byte) 0);
+                }
             }
-            game.conn.sendKeyboardInput(vk, down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP, modifiers, (byte) 0);
+
+            @Override
+            public void sendMouseMove(short dx, short dy) {
+                Game game = Game.instance;
+                if (game != null && game.conn != null) {
+                    game.conn.sendMouseMove(dx, dy);
+                }
+            }
+
+            @Override
+            public void sendMouseButton(byte button, boolean down) {
+                Game game = Game.instance;
+                if (game != null && game.conn != null) {
+                    if (down) {
+                        game.conn.sendMouseButtonDown(button);
+                    } else {
+                        game.conn.sendMouseButtonUp(button);
+                    }
+                }
+            }
         });
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);

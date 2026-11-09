@@ -90,4 +90,45 @@ public class ActionPadKeyMapTest {
         assertEquals(0x04, ActionPadKeyMap.modifierFlag(ActionPadKeyMap.VK_LMENU));
         assertEquals(0, ActionPadKeyMap.modifierFlag('A'));
     }
+
+    @Test
+    public void fKeyPageHasF1ToF12() {
+        ActionPadKeyMap.Page page = null;
+        for (ActionPadKeyMap.Page p : ActionPadKeyMap.PAGES) if (p.title.equals("F-Keys")) page = p;
+        assertNotNull(page);
+        assertEquals(12, page.slots.size());
+        assertEquals("F1", page.slots.get(0).label);
+        assertEquals(0x70, page.slots.get(0).vk);
+        assertEquals("F12", page.slots.get(11).label);
+        assertEquals(0x7B, page.slots.get(11).vk);
+    }
+
+    @Test
+    public void macroTypesEnterTextEnter() {
+        int[] keys = ActionPadKeyMap.macroKeys("/sit");
+        assertEquals(6, keys.length);
+        assertEquals(0x0D, keys[0]);
+        assertEquals(0xBF, keys[1]);
+        assertEquals('S', keys[2]);
+        assertEquals('I', keys[3]);
+        assertEquals('T', keys[4]);
+        assertEquals(0x0D, keys[5]);
+    }
+
+    @Test
+    public void everyChatMacroIsTypeable() {
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
+            for (ActionPadKeyMap.Slot slot : page.slots) {
+                if (slot.macro != null) {
+                    assertTrue(slot.label, slot.isolated);
+                    assertEquals(slot.macro.length() + 2, ActionPadKeyMap.macroKeys(slot.macro).length);
+                }
+            }
+        }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void macroRejectsCharactersThatNeedShift() {
+        ActionPadKeyMap.macroKeys("/Sit");
+    }
 }

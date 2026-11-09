@@ -16,6 +16,8 @@ public final class ActionPadKeyMap {
 
     // Windows virtual-key codes. Letters and digits are their ASCII codes.
     public static final int VK_TAB = 0x09;
+    public static final int VK_RETURN = 0x0D;
+    public static final int VK_SPACE = 0x20;
     public static final int VK_ESCAPE = 0x1B;
     public static final int VK_PRIOR = 0x21;    // Page Up
     public static final int VK_NEXT = 0x22;     // Page Down
@@ -28,6 +30,15 @@ public final class ActionPadKeyMap {
     public static final int VK_LMENU = 0xA4;    // Left Alt
     public static final int VK_OEM_PLUS = 0xBB; // '=' on a US keyboard
     public static final int VK_OEM_MINUS = 0xBD;
+    public static final int VK_OEM_PERIOD = 0xBE;
+    public static final int VK_OEM_2 = 0xBF;    // '/' on a US keyboard
+
+    // Same values as MouseButtonPacket.BUTTON_*.
+    public static final byte MOUSE_LEFT = 0x01;
+    public static final byte MOUSE_RIGHT = 0x03;
+
+    /** Title of the touchpad tab, shown after the key pages. */
+    public static final String MOUSE_TAB_TITLE = "Mouse";
 
     // Same values as KeyboardPacket.MODIFIER_*.
     public static final byte MOD_SHIFT = 0x01;
@@ -56,12 +67,23 @@ public final class ActionPadKeyMap {
         public final int vk;
         public final int[] mods;
         public final boolean isolated;
+        /** Text typed into the chat box (Enter, the text, Enter) instead of a single key, or null. */
+        public final String macro;
 
         Slot(String label, int vk, boolean isolated, int... mods) {
             this.label = label;
             this.vk = vk;
             this.mods = mods;
             this.isolated = isolated;
+            this.macro = null;
+        }
+
+        Slot(String label, String macro) {
+            this.label = label;
+            this.vk = VK_RETURN;
+            this.mods = new int[0];
+            this.isolated = true;
+            this.macro = macro;
         }
     }
 
@@ -78,6 +100,11 @@ public final class ActionPadKeyMap {
     /** A page button: sends its own modifiers only. */
     private static Slot page(String label, int vk, int... mods) {
         return new Slot(label, vk, true, mods);
+    }
+
+    /** A chat button: opens the chat box, types {@code text}, and sends it. */
+    private static Slot macro(String label, String text) {
+        return new Slot(label, text);
     }
 
     /** A number-block button: takes whatever Shift, Ctrl or Alt is armed on the pad. */
@@ -119,7 +146,45 @@ public final class ActionPadKeyMap {
                     page("Friendly nameplates", 'V', VK_LSHIFT),
                     page("Chat page up", VK_PRIOR),
                     page("Chat page down", VK_NEXT),
-                    page("Screenshot", VK_SNAPSHOT))));
+                    page("Screenshot", VK_SNAPSHOT)),
+            new Page("Chat",
+                    page("Open chat", VK_RETURN),
+                    page("Slash command", VK_OEM_2),
+                    page("Reply", 'R'),
+                    macro("Sit", "/sit"),
+                    macro("Dance", "/dance"),
+                    macro("Follow", "/follow"),
+                    macro("Assist", "/assist"),
+                    macro("Dismount", "/dismount")),
+            new Page("F-Keys", fKeys())));
+
+    private static Slot[] fKeys() {
+        Slot[] out = new Slot[12];
+        for (int i = 0; i < out.length; i++) out[i] = page("F" + (i + 1), VK_F1 + i);
+        return out;
+    }
+
+    /**
+     * The key presses that type {@code text} into WoW's chat box: Enter, each character, Enter.
+     * Supports lower-case letters, digits, space, '/' and '.', which need no Shift on a US layout.
+     */
+    public static int[] macroKeys(String text) {
+        int[] keys = new int[text.length() + 2];
+        keys[0] = VK_RETURN;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            int vk;
+            if (c >= 'a' && c <= 'z') vk = Character.toUpperCase(c);
+            else if (c >= '0' && c <= '9') vk = c;
+            else if (c == ' ') vk = VK_SPACE;
+            else if (c == '/') vk = VK_OEM_2;
+            else if (c == '.') vk = VK_OEM_PERIOD;
+            else throw new IllegalArgumentException("Unsupported macro character '" + c + "' in " + text);
+            keys[i + 1] = vk;
+        }
+        keys[keys.length - 1] = VK_RETURN;
+        return keys;
+    }
 
     /** Action Bar 1, slots 1 to 12, shown as the 4 x 3 number block. */
     public static final List<Slot> NUMBERS = Collections.unmodifiableList(buildNumbers());
