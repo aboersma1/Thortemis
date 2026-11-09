@@ -47,13 +47,15 @@ public class ExternalActionPadView extends LinearLayout {
     /** Pages with more buttons than this split into two columns. */
     private static final int SINGLE_COLUMN_MAX = 8;
 
-    private static final int BG = 0xFF14110D;
-    private static final int FACE = 0xFF2B2318;
-    private static final int FACE_NUMBER = 0xFF352A1B;
-    private static final int FACE_PRESSED = 0xFF5A4620;
-    private static final int BORDER = 0xFF8A6A2A;
-    private static final int GOLD = 0xFFE0B04A;
-    private static final int TEXT = 0xFFF1E3C0;
+    // Blue "Alliance" look: deep navy panel, steel-blue trim, frost-blue highlights.
+    private static final int BG = 0xFF08111F;
+    private static final int BG_TOP = 0xFF0F2038;
+    private static final int FACE = 0xFF16294A;
+    private static final int FACE_NUMBER = 0xFF1B3560;
+    private static final int FACE_PRESSED = 0xFF2F6AB8;
+    private static final int BORDER = 0xFF3F72B0;
+    private static final int ACCENT = 0xFF7CC8FF;
+    private static final int TEXT = 0xFFE8F3FF;
 
     private final KeySink sink;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -95,7 +97,8 @@ public class ExternalActionPadView extends LinearLayout {
         // Swallow touches in the gaps, so they do not move the host's mouse.
         setClickable(true);
         setMotionEventSplittingEnabled(true);
-        setBackgroundColor(BG);
+        GradientDrawable panel = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{BG_TOP, BG});
+        setBackground(panel);
         int pad = dp(8);
         setPadding(pad, pad, pad, pad);
 
@@ -376,11 +379,11 @@ public class ExternalActionPadView extends LinearLayout {
             int vk = entry.getKey();
             TextView button = entry.getValue();
             if (locked.contains(vk)) {
-                button.setBackground(rect(GOLD, GOLD));
+                button.setBackground(rect(ACCENT, ACCENT));
                 button.setTextColor(BG);
             } else if (armed.contains(vk)) {
-                button.setBackground(rect(FACE, GOLD));
-                button.setTextColor(GOLD);
+                button.setBackground(rect(FACE, ACCENT));
+                button.setTextColor(ACCENT);
             } else {
                 button.setBackground(rect(FACE, BORDER));
                 button.setTextColor(TEXT);
@@ -391,25 +394,33 @@ public class ExternalActionPadView extends LinearLayout {
     }
 
     private void styleTab(TextView tab, boolean selected) {
-        tab.setBackground(selected ? rect(FACE_PRESSED, GOLD) : rect(BG, BORDER));
-        tab.setTextColor(selected ? GOLD : TEXT);
+        tab.setBackground(selected ? rect(FACE_PRESSED, ACCENT) : rect(BG, BORDER));
+        tab.setTextColor(selected ? ACCENT : TEXT);
     }
 
     private StateListDrawable keyBackground(boolean number) {
         int face = number ? FACE_NUMBER : FACE;
         StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_pressed}, rect(FACE_PRESSED, GOLD));
-        states.addState(new int[]{android.R.attr.state_activated}, rect(face, GOLD));
+        states.addState(new int[]{android.R.attr.state_pressed}, rect(FACE_PRESSED, ACCENT));
+        states.addState(new int[]{android.R.attr.state_activated}, rect(face, ACCENT));
         states.addState(new int[]{}, rect(face, BORDER));
         return states;
     }
 
     private GradientDrawable rect(int fill, int stroke) {
         GradientDrawable d = new GradientDrawable();
-        d.setColor(fill);
+        d.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+        d.setColors(new int[]{lighten(fill), fill});
         d.setCornerRadius(dp(10));
         d.setStroke(dp(2), stroke);
         return d;
+    }
+
+    private static int lighten(int c) {
+        int r = Math.min(255, ((c >> 16) & 0xFF) + 22);
+        int g = Math.min(255, ((c >> 8) & 0xFF) + 22);
+        int b = Math.min(255, (c & 0xFF) + 28);
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
 
     /** A long, multi-word label drops its last word onto a second line. */
@@ -432,6 +443,14 @@ public class ExternalActionPadView extends LinearLayout {
 
     private int dp(int value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    /**
+     * The pad is clickable so gap touches are swallowed, and Android hands a clickable parent's pressed
+     * state to every child, which lit up all the buttons at once. Buttons set their own pressed state.
+     */
+    @Override
+    protected void dispatchSetPressed(boolean pressed) {
     }
 
     /** Never leave a key stuck down if the display goes away or the game closes mid-press. */
