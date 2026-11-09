@@ -217,6 +217,13 @@
             android:summary="@string/summary_fullexdisplay_mode"
             android:title="@string/title_fullexdisplay_mode"
             app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_enable_action_pad"
+            android:summary="@string/summary_action_pad"
+            android:title="@string/title_action_pad"
+            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 
     <PreferenceCategory

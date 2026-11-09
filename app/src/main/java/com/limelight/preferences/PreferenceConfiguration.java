@@ -302,6 +302,9 @@ public class PreferenceConfiguration {
 
     public boolean enableFullExDisplay;
 
+    // Shows the WoW-style action pad on the second screen while streaming
+    public boolean enableActionPad;
+
     //串流画面顶部居中显示
     public boolean alignDisplayTopCenter;
 
@@ -967,6 +970,8 @@ private static int getFramePacingValue(Context context) {
         config.enableNewAnalogStick=prefs.getBoolean(CHECKBOX_CHECKBOX_ENABLE_ANALOG_STICK_NEW,false);
 
         config.enableFullExDisplay=prefs.getBoolean("checkbox_enable_fullexdisplay",false);
+
+        config.enableActionPad=prefs.getBoolean("checkbox_enable_action_pad",true);
 
         config.alignDisplayTopCenter =prefs.getBoolean("checkbox_enable_view_top_center",false);
 

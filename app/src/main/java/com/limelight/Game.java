@@ -40,6 +40,7 @@ import com.limelight.nvstream.jni.MoonBridge;
 import com.limelight.preferences.GlPreferences;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.profiles.ProfilesManager;
+import com.limelight.ui.ActionPadPresentation;
 import com.limelight.ui.ExternalControllerView;
 import com.limelight.ui.GameGestures;
 import com.limelight.ui.StreamContainer;
@@ -1008,6 +1009,54 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
     }
 
+    private ActionPadPresentation actionPadPresentation;
+
+    /**
+     * Shows the action pad on the second display, if there is one. In Fully External Display Mode the
+     * controller activity hosts its own pad, so this stays off there.
+     */
+    private void showActionPadPresentation() {
+        if (!prefConfig.enableActionPad || prefConfig.enableFullExDisplay || actionPadPresentation != null) {
+            return;
+        }
+        Display secondary = getSecondaryDisplay(this);
+        if (secondary == null) {
+            return;
+        }
+        ActionPadPresentation presentation = new ActionPadPresentation(this, secondary, (vk, down, modifiers) -> {
+            if (conn != null) {
+                conn.sendKeyboardInput(vk, down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP, modifiers, (byte) 0);
+            }
+        });
+        presentation.setOnDismissListener(dialog -> {
+            if (actionPadPresentation == presentation) {
+                actionPadPresentation = null;
+            }
+        });
+        try {
+            presentation.show();
+            actionPadPresentation = presentation;
+        } catch (WindowManager.InvalidDisplayException e) {
+            LimeLog.warning("Could not show the action pad on the second display: " + e);
+        }
+    }
+
+    private void hideActionPadPresentation() {
+        ActionPadPresentation presentation = actionPadPresentation;
+        actionPadPresentation = null;
+        if (presentation != null) {
+            // Never leave a key held down on the host
+            presentation.releaseAll();
+            presentation.dismiss();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        showActionPadPresentation();
+    }
+
     private void listenForExternalDisplayRemoval() {
         DisplayManager displayManager = (DisplayManager) getSystemService(Context.DISPLAY_SERVICE);
         displayManager.registerDisplayListener(new DisplayManager.DisplayListener() {
@@ -1705,6 +1754,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         instance = null;
         timerHandler.removeCallbacksAndMessages(null);
 
+        hideActionPadPresentation();
+
         if (prefConfig.enableFullExDisplay) handleDisplayRemoved();
 
         if (controllerHandler != null) {
@@ -1760,6 +1811,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     @Override
     protected void onStop() {
         super.onStop();
+
+        hideActionPadPresentation();
 
         SpinnerDialog.closeDialogs(this);
         Dialog.closeDialogs();
