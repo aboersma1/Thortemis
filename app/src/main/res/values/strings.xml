@@ -640,6 +640,7 @@
     <string name="notification_title">External Display Active</string>
     <string name="notification_text">Tap to open touchpad controller</string>
     <string name="permission_denied">Notification permission denied</string>
+    <string name="action_pad_toggle">PAD</string>
     <string name="no_external_display">No external display detected</string>
     <string name="no_game_instance">No game instance available</string>
     <string name="get_clipboard_failed">Failed to get clipboard: </string>

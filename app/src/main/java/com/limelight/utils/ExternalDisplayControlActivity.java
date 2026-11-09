@@ -30,6 +30,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -47,7 +48,9 @@ import com.limelight.LimeLog;
 import com.limelight.R;
 import com.limelight.StartExternalDisplayControlReceiver;
 import com.limelight.binding.input.virtual_controller.keyboard.KeyBoardLayoutController;
+import com.limelight.nvstream.input.KeyboardPacket;
 import com.limelight.preferences.PreferenceConfiguration;
+import com.limelight.ui.ExternalActionPadView;
 import com.limelight.ui.ExternalControllerView;
 
 /**
@@ -66,6 +69,7 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
     private ExternalControllerView rootLayout;
     private ImageButton zoomButton;
     private KeyBoardLayoutController keyBoardLayoutController;
+    private ExternalActionPadView actionPad;
 
     private boolean isKeyboardVisible = false;
 
@@ -79,6 +83,9 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
     private static final String NOTIFICATION_CHANNEL_ID = "secondary_screen_active_channel_id";
     public static final int SECONDARY_SCREEN_NOTIFICATION_ID = 1;
     private static final int PERMISSION_REQUEST_CODE = 1001;
+
+    private static final String ACTION_PAD_PREFS = "external_action_pad";
+    private static final String ACTION_PAD_VISIBLE = "visible";
 
     private GameMenu gameMenu;
 
@@ -206,6 +213,9 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
     @Override
     protected void onPause() {
         super.onPause();
+        if (actionPad != null) {
+            actionPad.releaseAll();
+        }
         if (!isGameInstanceAvailable()) {
             finish();
         }
@@ -273,6 +283,15 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
         if (!isKeyboardVisible) {
             handler.postDelayed(dimScreenRunnable, INACTIVITY_TIMEOUT_MS);
         }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        // The pad's buttons consume their touches, so the root layout would never see them
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && dimScreenRunnable != null) {
+            handleUserActivity();
+        }
+        return super.dispatchTouchEvent(event);
     }
 
     @Override
@@ -399,6 +418,9 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
 
         setContentView(rootLayout);
 
+        // The action pad goes in first, so the corner buttons below draw on top of it
+        createActionPad();
+
         // Top-left buttons
         LinearLayout topLeftButtons = createButtonContainer(Gravity.TOP | Gravity.START);
         topLeftButtons.setFocusable(false);
@@ -430,16 +452,68 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
         bottomLeftButton.addView(createImageButton(R.drawable.ic_android_keyboard, v -> _toggleKeyboard()));
         rootLayout.addView(bottomLeftButton);
 
-        // Bottom-center buttons
-//        LinearLayout bottomCenterButtons = createButtonContainer(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-//        bottomCenterButtons.setFocusable(false);
-//        rootLayout.addView(bottomCenterButtons);
+        // Bottom-center button: action pad toggle
+        LinearLayout bottomCenterButtons = createButtonContainer(Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        bottomCenterButtons.setFocusable(false);
+        bottomCenterButtons.addView(createPadToggleButton());
+        rootLayout.addView(bottomCenterButtons);
 
         // Bottom-right button: Custom keyboard toggle
         LinearLayout bottomRightButton = createButtonContainer(Gravity.BOTTOM | Gravity.END);
         bottomRightButton.setFocusable(false);
         bottomRightButton.addView(createImageButton(R.drawable.ic_fullscreen_keyboard, v -> _toggleFullKeyboard()));
         rootLayout.addView(bottomRightButton);
+    }
+
+    /**
+     * Builds the action pad (numbers, Shift/Ctrl/Alt, interface and utility shortcuts) and sends its keys
+     * through the stream. It sits between the corner buttons, so they stay reachable.
+     */
+    private void createActionPad() {
+        actionPad = new ExternalActionPadView(this, (vk, down, modifiers) -> {
+            Game game = Game.instance;
+            if (game == null || game.conn == null) {
+                return;
+            }
+            game.conn.sendKeyboardInput(vk, down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP, modifiers, (byte) 0);
+        });
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        params.topMargin = dpToPx(56);
+        params.bottomMargin = dpToPx(56);
+        actionPad.setVisibility(isActionPadVisible() ? View.VISIBLE : View.GONE);
+        rootLayout.addView(actionPad, params);
+    }
+
+    private TextView createPadToggleButton() {
+        TextView button = new TextView(this);
+        button.setText(R.string.action_pad_toggle);
+        button.setTextColor(Color.WHITE);
+        button.setGravity(Gravity.CENTER);
+        button.setLayoutParams(new LinearLayout.LayoutParams(dpToPx(72), dpToPx(56)));
+        button.setOnClickListener(v -> toggleActionPad());
+        return button;
+    }
+
+    private boolean isActionPadVisible() {
+        // Shown by default
+        return getSharedPreferences(ACTION_PAD_PREFS, MODE_PRIVATE).getBoolean(ACTION_PAD_VISIBLE, true);
+    }
+
+    /**
+     * Shows or hides the action pad. Hidden, the whole screen is the touchpad again.
+     */
+    private void toggleActionPad() {
+        if (actionPad == null) {
+            return;
+        }
+        boolean show = actionPad.getVisibility() != View.VISIBLE;
+        if (!show) {
+            // Never leave a key or modifier held down on the host
+            actionPad.releaseAll();
+        }
+        actionPad.setVisibility(show ? View.VISIBLE : View.GONE);
+        getSharedPreferences(ACTION_PAD_PREFS, MODE_PRIVATE).edit().putBoolean(ACTION_PAD_VISIBLE, show).apply();
     }
 
     /**
