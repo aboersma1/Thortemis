@@ -11,6 +11,47 @@ Artemis is currently the best fork of Moonlight with loads of optimizations for 
 
 A more seamless experience with virtual display will be Artemis paired with [Apollo](https://github.com/ClassicOldSong/Apollo).
 
+# WoW Action Pad (this fork)
+
+This fork of Artemis adds an **action pad** for two-screen handhelds such as the AYN Thor. While you stream a game from your PC with Apollo or Sunshine, the second (bottom) screen becomes a touch panel of keys, so you can reach your number bar, interface shortcuts and mouse without a keyboard. It was built for World of Warcraft but sends ordinary Windows key codes, so it works for any game or app.
+
+> **Status:** early release. The pad's logic has automated tests (44 unit tests), but the screens have so far only been checked by building them, not on many devices. Please report problems with your device model and a description of what you saw.
+
+## What you get
+
+- **Key pages:** Interface, Target, Utility, Chat and F-Keys, plus a number row. F-Keys is hidden until you turn it on.
+- **Chat tab:** open chat or a slash command with the on-screen keyboard, and one-tap macros (Sit, Dance, Follow, Assist, Dismount).
+- **Modifiers:** Shift, Ctrl and Alt can be tapped once for the next key or locked on, and combined with any button.
+- **Mouse tab:** touchpad with tap-to-click, two-finger right-click, Left/Hold/Right buttons and a scroll strip.
+- **Keyboard tab:** a full on-screen keyboard.
+- **Extra buttons:** an optional panel of up to 10 more keys (F8 to F12, then Shift plus F8 to F12).
+- **Customize:** change any button's key, name and outline colour, hide buttons, reorder them, and save up to three profiles. Reset one button or everything.
+- **Looks:** 15 themes (Alliance Blue default, Classic, TBC, Wrath, Cata, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight, TWW, Midnight, OLED Black, Cyberpunk).
+- **Layout options:** show pages side by side, swap sides, put the tab bar at the bottom, change text size.
+- **Comfort:** the pad dims when idle (off, 5, 10 or 30 seconds; 10 by default) and can vibrate on press.
+
+## Using it
+
+1. Install the APK and connect to your PC as usual.
+2. Open Artemis settings and make sure **Action pad on second screen** is on (it is by default). The tabs, theme, dimming, touchpad, scroll and extras options are in the same section. Settings apply the next time the pad opens.
+3. Start a stream. The pad appears on the second screen. Tap **Edit** in its tab bar to customize buttons.
+
+Not used in Fully External Display Mode, which has its own pad.
+
+## Known limits
+
+- Scroll wheel direction may need the **Reverse scroll direction** setting on some setups.
+- Saved button changes are tied to each button's default label, so a future version that renames defaults could reset those buttons.
+- Builds are debug builds for now.
+
+## For developers
+
+See [docs/ACTION_PAD.md](docs/ACTION_PAD.md) for how the pad works: data flow, file map, a suggested reading order, design decisions, tests and risks.
+
+## Licence and credit
+
+Artemis is built on Moonlight Android and is licensed under the GNU GPL v3 (see `LICENSE.txt`); this fork keeps that licence and the original authors' credit (see Authors below). The action pad is an addition on top of [ClassicOldSong's Artemis](https://github.com/ClassicOldSong/moonlight-android), which is a fork of [Moonlight](https://github.com/moonlight-stream/moonlight-android).
+
 # Features
 
 If you switch back to the main stream version, you'll be missing the following awesome features which are very unlikely to be added there:
