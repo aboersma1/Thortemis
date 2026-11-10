@@ -131,4 +131,64 @@ public class ActionPadKeyMapTest {
     public void macroRejectsCharactersThatNeedShift() {
         ActionPadKeyMap.macroKeys("/Sit");
     }
+
+    @Test
+    public void extraButtonsAreF8ToF12ThenShiftF8ToF12() {
+        assertEquals(10, ActionPadKeyMap.EXTRAS.size());
+        assertEquals(0x77, ActionPadKeyMap.EXTRAS.get(0).vk);   // F8
+        assertEquals(0x7B, ActionPadKeyMap.EXTRAS.get(4).vk);   // F12
+        assertEquals(0, ActionPadKeyMap.EXTRAS.get(4).mods.length);
+        assertEquals(0x77, ActionPadKeyMap.EXTRAS.get(5).vk);
+        assertEquals(ActionPadKeyMap.VK_LSHIFT, ActionPadKeyMap.EXTRAS.get(5).mods[0]);
+    }
+
+    @Test
+    public void typingKeyboardCoversTheUsKeysWithoutDuplicates() {
+        Set<Integer> seen = new HashSet<>();
+        int keys = 0;
+        for (String[] row : ActionPadKeyMap.TYPING_ROWS) {
+            for (String pair : row) {
+                assertEquals(pair, 2, pair.length());
+                assertTrue("duplicate key " + pair, seen.add(ActionPadKeyMap.vkOf(pair.charAt(0))));
+                keys++;
+            }
+        }
+        assertEquals(12 + 12 + 11 + 10, keys);
+        assertEquals(0xBD, ActionPadKeyMap.vkOf('-'));
+        assertEquals(0xDE, ActionPadKeyMap.vkOf('\''));
+        assertEquals('Q', ActionPadKeyMap.vkOf('q'));
+    }
+
+    @Test
+    public void remapListHasNoDuplicateKeysAndNamesThem() {
+        Set<Integer> seen = new HashSet<>();
+        for (ActionPadKeyMap.KeyDef key : ActionPadKeyMap.KEYS) {
+            assertTrue("duplicate key code for " + key.label, seen.add(key.vk));
+            assertEquals(key.label, ActionPadKeyMap.labelFor(key.vk));
+        }
+        assertEquals("Shift", ActionPadKeyMap.labelFor(ActionPadKeyMap.VK_LSHIFT));
+        assertEquals("0xFE", ActionPadKeyMap.labelFor(0xFE));
+        // Every default button can be shown by name in the remap screen.
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
+            for (ActionPadKeyMap.Slot slot : page.slots) {
+                if (slot.macro == null) assertTrue(slot.label, !ActionPadKeyMap.labelFor(slot.vk).startsWith("0x"));
+            }
+        }
+    }
+
+    @Test
+    public void modifierMasksRoundTrip() {
+        for (int mask = 0; mask < 8; mask++) {
+            assertEquals(mask, ActionPadKeyMap.maskOf(ActionPadKeyMap.modsFromMask(mask)));
+        }
+        assertEquals(2, ActionPadKeyMap.modsFromMask(5).length);
+    }
+
+    @Test
+    public void chatButtonsOpenTheKeyboardAndMacrosDoNot() {
+        assertTrue(find("Open chat").opensKeyboard);
+        assertTrue(find("Slash command").opensKeyboard);
+        assertTrue(!find("Reply").opensKeyboard);
+        assertTrue(find("Sit").macro != null && !find("Sit").opensKeyboard);
+    }
 }

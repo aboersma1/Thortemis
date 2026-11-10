@@ -750,4 +750,15 @@
     <string name="title_action_pad_tabs">Action pad tabs</string>
     <string name="summary_action_pad_tabs">Choose which tabs the pad shows. Changes apply the next time the pad opens.</string>
     <string name="title_action_pad_dim">Dim action pad when idle</string>
+    <string name="title_action_pad_side_by_side">Show pages side by side</string>
+    <string name="summary_action_pad_side_by_side">Interface, Target and the other key pages at once, in one tab.</string>
+    <string name="title_action_pad_swap_sides">Number block on the left</string>
+    <string name="title_action_pad_tabs_bottom">Tab bar at the bottom</string>
+    <string name="title_action_pad_haptics">Vibrate on button press</string>
+    <string name="title_action_pad_label_size">Button text size</string>
+    <string name="title_action_pad_touch_speed">Touchpad speed</string>
+    <string name="title_action_pad_tap_click">Tap the touchpad to click</string>
+    <string name="title_action_pad_extras">Extra buttons</string>
+    <string name="summary_action_pad_extras">A row of extra keys under the number block (F8 to F12, then Shift plus F8 to F12).</string>
+    <string name="title_action_pad_extras_count">Extra buttons shown</string>
 </resources>

@@ -251,6 +251,71 @@
             android:title="@string/title_action_pad_dim"
             app:iconSpaceReserved="false"
             app:useSimpleSummaryProvider="true" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="checkbox_action_pad_side_by_side"
+            android:summary="@string/summary_action_pad_side_by_side"
+            android:title="@string/title_action_pad_side_by_side"
+            app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="checkbox_action_pad_swap_sides"
+            android:title="@string/title_action_pad_swap_sides"
+            app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="checkbox_action_pad_tabs_bottom"
+            android:title="@string/title_action_pad_tabs_bottom"
+            app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_action_pad_haptics"
+            android:title="@string/title_action_pad_haptics"
+            app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="100"
+            android:entries="@array/action_pad_label_names"
+            android:entryValues="@array/action_pad_label_values"
+            android:key="list_action_pad_label_size"
+            android:title="@string/title_action_pad_label_size"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            android:defaultValue="22"
+            android:entries="@array/action_pad_speed_names"
+            android:entryValues="@array/action_pad_speed_values"
+            android:key="list_action_pad_touch_speed"
+            android:title="@string/title_action_pad_touch_speed"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_action_pad_tap_click"
+            android:title="@string/title_action_pad_tap_click"
+            app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="checkbox_action_pad_extras"
+            android:summary="@string/summary_action_pad_extras"
+            android:title="@string/title_action_pad_extras"
+            app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="5"
+            android:entries="@array/action_pad_extras_count_names"
+            android:entryValues="@array/action_pad_extras_count_values"
+            android:key="list_action_pad_extras_count"
+            android:title="@string/title_action_pad_extras_count"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
     <PreferenceCategory

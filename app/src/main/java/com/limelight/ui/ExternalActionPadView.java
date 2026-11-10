@@ -2,17 +2,13 @@ package com.limelight.ui;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.StateListDrawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import android.util.TypedValue;
-import android.view.Gravity;
-import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -20,26 +16,20 @@ import com.limelight.ui.ActionPadKeyMap.Page;
 import com.limelight.ui.ActionPadKeyMap.Slot;
 
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
- * A second-screen button pad for MMO-style play: a tabbed column of interface, target and utility
- * shortcuts on one side, and Shift / Ctrl / Alt plus the 12 action-bar number keys on the other.
+ * A second-screen button pad for MMO-style play: tabs of interface, target, utility and chat shortcuts,
+ * Shift / Ctrl / Alt plus the action-bar number keys, a touchpad and an on-screen keyboard. Players can
+ * change every button from the Edit button ({@link PadEditor}) and choose theme, tabs and layout in settings
+ * ({@link ActionPadSettings}).
  *
- * Every touch is exactly one key press and one key release, sent through {@link KeySink}. Shift, Ctrl
- * and Alt are one-shot by default (tap to arm, the next number key uses it, then it lets go) and lock
- * on a long press. Page buttons ignore armed modifiers and send only their own.
- *
- * Multi-touch works: every button has its own pointer, so several keys can be held at once.
+ * Every touch is exactly one key press and one key release, sent through {@link KeySink}, so several keys
+ * can be held at once. The state behind them lives in {@link PadInput}.
  */
-public class ExternalActionPadView extends LinearLayout {
+public class ExternalActionPadView extends FrameLayout {
 
-    /** Where key events go. {@code modifiers} is the KeyboardPacket modifier flags in effect for the key. */
+    /** Where key and mouse events go. {@code modifiers} is the KeyboardPacket modifier flags in effect for the key. */
     public interface KeySink {
         void sendKey(short vk, boolean down, byte modifiers);
 
@@ -50,644 +40,226 @@ public class ExternalActionPadView extends LinearLayout {
         default void sendMouseButton(byte button, boolean down) {}
     }
 
-    private static final long LOCK_PRESS_MS = 450;
     /** Pages with more buttons than this split into two columns. */
     private static final int SINGLE_COLUMN_MAX = 8;
-    /** Gap between the key presses of a chat macro. */
-    private static final long MACRO_STEP_MS = 35;
-    /** A touchpad touch shorter than this, that barely moved, is a click. */
-    private static final long TAP_MAX_MS = 250;
-    /** How long a tap-click holds the button down. */
-    private static final long CLICK_HOLD_MS = 45;
-    private static final float TAP_SLOP_DP = 8;
-    /** Host pixels moved per dp of finger travel on the touchpad. */
-    private static final float TOUCHPAD_SPEED = 2.2f;
-
+    private static final int EXTRAS_PER_ROW = 5;
     private static final float DIM_ALPHA = 0.18f;
 
-    private final KeySink sink;
-    private final ActionPadTheme theme;
-    /** The tabs the user chose to show, in order. */
-    private final List<Tab> visibleTabs = new ArrayList<>();
-    private final LinearLayout rightColumn;
+    private enum Kind { KEYS, MOUSE, KEYBOARD }
+
+    /** A tab: one or more pages of key buttons (several when shown side by side), the touchpad, or the keyboard. */
+    private static final class Tab {
+        final String title;
+        final Kind kind;
+        final List<Page> pages;
+
+        Tab(String title, Kind kind, List<Page> pages) {
+            this.title = title;
+            this.kind = kind;
+            this.pages = pages;
+        }
+    }
+
+    private final ActionPadSettings settings;
+    private final PadInput input;
+    private final PadKit kit;
+    private final PadEditor editor;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final List<Tab> tabs = new ArrayList<>();
+    private final List<TextView> tabViews = new ArrayList<>();
+    private final LinearLayout content;
+    private LinearLayout pageHost;
+    private LinearLayout rightColumn;
+    private int tabIndex = 0;
+    /** The tab to go back to when the keyboard, opened for chat, is done. -1 when it was not opened for chat. */
+    private int chatReturnTab = -1;
+
+    // Idle dimming.
     private final Handler dimHandler = new Handler(Looper.getMainLooper());
-    private final long dimMs;
     private boolean dimmingEnabled = true;
     private boolean dimmed = false;
     private boolean touching = false;
     private long lastTouch = SystemClock.uptimeMillis();
-    private final Handler handler = new Handler(Looper.getMainLooper());
-
-    /** Modifiers the user has armed or locked on the pad, in the order they were armed. */
-    private final Set<Integer> armed = new LinkedHashSet<>();
-    private final Set<Integer> locked = new HashSet<>();
-    private final Map<Integer, TextView> modifierButtons = new HashMap<>();
-    private final List<TextView> numberButtons = new ArrayList<>();
-    private final List<TextView> tabs = new ArrayList<>();
-
-    /** Buttons currently held down, by the view that is holding them. */
-    private final Map<View, Press> pressed = new HashMap<>();
-    /** How many isolated buttons are down. While any is, armed modifiers are let go on the host. */
-    private int isolatedDown = 0;
-
-    /** Mouse buttons currently held on the host, with how many touches hold each. */
-    private final Map<Integer, Integer> mouseHeld = new HashMap<>();
-    private TextView holdButton;
-    private boolean holdOn = false;
-
-    private final LinearLayout pageHost;
-    private int pageIndex = 0;
-
-    /** A tab: a page of key buttons, or (with no page) the touchpad. */
-    private static final class Tab {
-        final String title;
-        final Page page;
-
-        Tab(String title, Page page) {
-            this.title = title;
-            this.page = page;
-        }
-    }
-
-    private static final class Press {
-        final Slot slot;
-        final List<Integer> pressedMods;
-        final byte mask;
-        final boolean isolated;
-
-        Press(Slot slot, List<Integer> pressedMods, byte mask, boolean isolated) {
-            this.slot = slot;
-            this.pressedMods = pressedMods;
-            this.mask = mask;
-            this.isolated = isolated;
-        }
-    }
 
     public ExternalActionPadView(Context context, KeySink sink) {
         super(context);
-        this.sink = sink;
-        ActionPadSettings settings = ActionPadSettings.load(context);
-        this.theme = settings.theme;
-        this.dimMs = settings.dimMs;
-        for (Page page : ActionPadKeyMap.PAGES) {
-            if (settings.shownTabs.contains(page.id)) visibleTabs.add(new Tab(page.title, page));
-        }
-        if (settings.shownTabs.contains(ActionPadKeyMap.MOUSE_TAB_ID)) {
-            visibleTabs.add(new Tab(ActionPadKeyMap.MOUSE_TAB_TITLE, null));
-        }
+        settings = ActionPadSettings.load(context);
+        input = new PadInput(sink, new PadInput.Scheduler() {
+            @Override
+            public void post(Runnable task, long delayMs) {
+                handler.postDelayed(task, delayMs);
+            }
 
-        setOrientation(VERTICAL);
+            @Override
+            public void cancelAll() {
+                handler.removeCallbacksAndMessages(null);
+            }
+        });
+        kit = new PadKit(context, settings, input);
+        // The editor has its own kit, so its screens never disturb the pad's buttons. Nothing it builds sends keys.
+        PadInput silent = new PadInput((vk, down, modifiers) -> { }, new PadInput.Scheduler() {
+            @Override
+            public void post(Runnable task, long delayMs) { }
+
+            @Override
+            public void cancelAll() { }
+        });
+        editor = new PadEditor(new PadKit(context, settings, silent), this::rebuild, this::closeEditor);
+
+        buildTabs();
         // Swallow touches in the gaps, so they do not move the host's mouse.
         setClickable(true);
         setMotionEventSplittingEnabled(true);
-        setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{theme.bgTop, theme.bg}));
-        int pad = dp(8);
+        setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{settings.theme.bgTop, settings.theme.bg}));
+        int pad = kit.dp(8);
         setPadding(pad, pad, pad, pad);
 
-        addView(buildTabBar(), new LayoutParams(LayoutParams.MATCH_PARENT, dp(44)));
+        content = kit.box(LinearLayout.VERTICAL);
+        addView(content, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        addView(editor, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        rebuild();
+    }
 
-        LinearLayout body = new LinearLayout(context);
-        body.setOrientation(HORIZONTAL);
-        body.setMotionEventSplittingEnabled(true);
-        addView(body, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
-
-        pageHost = new LinearLayout(context);
-        pageHost.setOrientation(HORIZONTAL);
-        pageHost.setMotionEventSplittingEnabled(true);
-        body.addView(pageHost, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
-
-        LinearLayout right = new LinearLayout(context);
-        right.setOrientation(VERTICAL);
-        right.setMotionEventSplittingEnabled(true);
-        body.addView(right, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
-        rightColumn = right;
-
-        right.addView(buildModifierRow(), weighted(right, 0.7f));
-        right.addView(buildNumberBlock(), weighted(right, 4f));
-
-        showPage(0);
+    private void buildTabs() {
+        List<Page> shown = new ArrayList<>();
+        for (Page page : ActionPadKeyMap.PAGES) {
+            if (settings.shownTabs.contains(page.id)) shown.add(page);
+        }
+        if (settings.sideBySide && !shown.isEmpty()) {
+            tabs.add(new Tab("Pages", Kind.KEYS, shown));
+        } else {
+            for (Page page : shown) tabs.add(new Tab(page.title, Kind.KEYS, java.util.Collections.singletonList(page)));
+        }
+        if (settings.shownTabs.contains(ActionPadKeyMap.MOUSE_TAB_ID)) tabs.add(new Tab("Mouse", Kind.MOUSE, java.util.Collections.<Page>emptyList()));
+        if (settings.shownTabs.contains(ActionPadKeyMap.KEYBOARD_TAB_ID)) tabs.add(new Tab("Keyboard", Kind.KEYBOARD, java.util.Collections.<Page>emptyList()));
     }
 
     // --- Building the UI ---
 
+    /** Builds everything again, after the player changed a button. Keeps the current tab. */
+    private void rebuild() {
+        kit.forget();
+        input.releaseKeys();
+        input.releaseMouse();
+        content.removeAllViews();
+        tabViews.clear();
+
+        LinearLayout body = kit.box(LinearLayout.HORIZONTAL);
+        pageHost = kit.box(LinearLayout.HORIZONTAL);
+        rightColumn = kit.box(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams pageParams = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
+        LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
+        body.addView(settings.swapSides ? rightColumn : pageHost, settings.swapSides ? rightParams : pageParams);
+        body.addView(settings.swapSides ? pageHost : rightColumn, settings.swapSides ? pageParams : rightParams);
+        buildRightColumn();
+
+        View tabBar = buildTabBar();
+        LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, kit.dp(44));
+        LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f);
+        content.addView(settings.tabsBottom ? body : tabBar, settings.tabsBottom ? bodyParams : barParams);
+        content.addView(settings.tabsBottom ? tabBar : body, settings.tabsBottom ? barParams : bodyParams);
+
+        showTab(tabIndex);
+    }
+
     private LinearLayout buildTabBar() {
-        LinearLayout bar = new LinearLayout(getContext());
-        bar.setOrientation(HORIZONTAL);
-        for (int i = 0; i < visibleTabs.size(); i++) {
+        LinearLayout bar = kit.box(LinearLayout.HORIZONTAL);
+        for (int i = 0; i < tabs.size(); i++) {
             final int index = i;
-            TextView tab = new TextView(getContext());
-            tab.setText(visibleTabs.get(i).title);
-            tab.setGravity(Gravity.CENTER);
+            TextView tab = kit.text(tabs.get(i).title, 13);
             tab.setSingleLine(true);
-            tab.setTypeface(Typeface.DEFAULT_BOLD);
-            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            tab.setOnClickListener(v -> showPage(index));
-            tabs.add(tab);
-            bar.addView(tab, weighted(bar, 1f));
+            tab.setOnClickListener(v -> {
+                chatReturnTab = -1;
+                showTab(index);
+            });
+            tabViews.add(tab);
+            bar.addView(tab, kit.weighted(bar, 1f));
         }
+        TextView edit = kit.tapButton("Edit", 13, this::openEditor);
+        bar.addView(edit, kit.weighted(bar, 0.8f));
         return bar;
     }
 
-    private LinearLayout buildModifierRow() {
-        LinearLayout row = new LinearLayout(getContext());
-        row.setOrientation(HORIZONTAL);
-        row.setMotionEventSplittingEnabled(true);
-        for (int vk : ActionPadKeyMap.MODIFIER_KEYS) {
-            TextView button = modifierButton(vk);
-            modifierButtons.put(vk, button);
-            row.addView(button, weighted(row, 1f));
-        }
-        refreshModifierButtons();
-        return row;
-    }
+    /** Shift / Ctrl / Alt, the number block, and the extra buttons when the player turned them on. */
+    private void buildRightColumn() {
+        LinearLayout mods = kit.box(LinearLayout.HORIZONTAL);
+        for (int vk : ActionPadKeyMap.MODIFIER_KEYS) mods.addView(kit.modifierButton(vk), kit.weighted(mods, 1f));
+        rightColumn.addView(mods, kit.weighted(rightColumn, 0.7f));
 
-    private LinearLayout buildNumberBlock() {
-        LinearLayout block = new LinearLayout(getContext());
-        block.setOrientation(VERTICAL);
-        block.setMotionEventSplittingEnabled(true);
-        List<Slot> numbers = ActionPadKeyMap.NUMBERS;
-        for (int start = 0; start < numbers.size(); start += 3) {
-            LinearLayout row = new LinearLayout(getContext());
-            row.setOrientation(HORIZONTAL);
-            row.setMotionEventSplittingEnabled(true);
-            for (Slot slot : numbers.subList(start, Math.min(start + 3, numbers.size()))) {
-                TextView button = keyButton(slot, 26f, true);
-                numberButtons.add(button);
-                row.addView(button, weighted(row, 1f));
+        List<Slot> numbers = settings.config.resolve("numbers", ActionPadKeyMap.NUMBERS, false);
+        rightColumn.addView(keyGrid(numbers, 3, 26), kit.weighted(rightColumn, 4f));
+
+        if (settings.extrasOn) {
+            List<Slot> extras = settings.config.resolve("extras", ActionPadKeyMap.EXTRAS, false);
+            extras = extras.subList(0, Math.min(settings.extrasCount, extras.size()));
+            if (!extras.isEmpty()) {
+                int rows = (extras.size() + EXTRAS_PER_ROW - 1) / EXTRAS_PER_ROW;
+                rightColumn.addView(keyGrid(extras, (extras.size() + rows - 1) / rows, 16), kit.weighted(rightColumn, 0.8f * rows));
             }
-            block.addView(row, weighted(block, 1f));
         }
-        return block;
     }
 
-    /** Shows page {@code index}. Lets go of any pressed button first, since its view is about to go. */
-    public void showPage(int index) {
-        releaseAllKeys();
-        releaseAllMouse();
-        pageIndex = Math.max(0, Math.min(index, visibleTabs.size() - 1));
-        for (int i = 0; i < tabs.size(); i++) styleTab(tabs.get(i), i == pageIndex);
+    /** Buttons in rows of {@code perRow}. These take Shift, Ctrl and Alt armed on the pad. */
+    private LinearLayout keyGrid(List<Slot> slots, int perRow, float sp) {
+        LinearLayout grid = kit.box(LinearLayout.VERTICAL);
+        for (int start = 0; start < slots.size(); start += perRow) {
+            LinearLayout row = kit.box(LinearLayout.HORIZONTAL);
+            for (Slot slot : slots.subList(start, Math.min(start + perRow, slots.size()))) {
+                row.addView(keyButton(slot, slot.label, sp, true), kit.weighted(row, 1f));
+            }
+            grid.addView(row, kit.weighted(grid, 1f));
+        }
+        return grid;
+    }
 
+    private TextView keyButton(Slot slot, String label, float sp, boolean modified) {
+        Runnable after = slot.opensKeyboard ? this::openChatKeyboard : null;
+        return kit.keyButton(slot, label, sp, modified, after);
+    }
+
+    /** Shows tab {@code index}. Lets go of any pressed button first, since its view is about to go. */
+    private void showTab(int index) {
+        if (tabs.isEmpty()) return;
+        input.releaseKeys();
+        input.releaseMouse();
+        tabIndex = Math.max(0, Math.min(index, tabs.size() - 1));
+        for (int i = 0; i < tabViews.size(); i++) styleTab(tabViews.get(i), i == tabIndex);
+
+        Tab tab = tabs.get(tabIndex);
         pageHost.removeAllViews();
-        Page page = visibleTabs.get(pageIndex).page;
-        boolean mouseTab = page == null;
-        // The touchpad takes the whole width, so Shift/Ctrl/Alt and the number block step aside.
-        if (mouseTab) {
-            for (int mod : new ArrayList<>(armed)) disarm(mod);
-            refreshModifierButtons();
+        // The touchpad and keyboard take the whole width, so the number block steps aside.
+        rightColumn.setVisibility(tab.kind == Kind.KEYS ? VISIBLE : GONE);
+        if (tab.kind == Kind.MOUSE) {
+            input.releaseModifiers();
+            pageHost.addView(new PadTouchpad(kit), kit.weighted(pageHost, 1f));
+        } else if (tab.kind == Kind.KEYBOARD) {
+            Runnable done = chatReturnTab >= 0 ? this::closeChatKeyboard : null;
+            pageHost.addView(new PadKeyboard(kit, null, done), kit.weighted(pageHost, 1f));
+        } else {
+            for (Page page : tab.pages) addPage(page);
         }
-        rightColumn.setVisibility(mouseTab ? GONE : VISIBLE);
-        if (mouseTab) {
-            pageHost.addView(buildMousePanel(), weighted(pageHost, 1f));
-            return;
-        }
-        int columns = page.slots.size() > SINGLE_COLUMN_MAX ? 2 : 1;
-        int perColumn = (page.slots.size() + columns - 1) / columns;
+    }
+
+    private void addPage(Page page) {
+        List<Slot> slots = settings.config.resolve(page.id, page.slots, false);
+        boolean wide = tabs.get(tabIndex).pages.size() == 1 && slots.size() > SINGLE_COLUMN_MAX;
+        int columns = wide ? 2 : 1;
+        int perColumn = (slots.size() + columns - 1) / columns;
         for (int c = 0; c < columns; c++) {
-            LinearLayout column = new LinearLayout(getContext());
-            column.setOrientation(VERTICAL);
-            column.setMotionEventSplittingEnabled(true);
-            int from = c * perColumn;
-            int to = Math.min(from + perColumn, page.slots.size());
-            for (Slot slot : page.slots.subList(from, to)) {
-                column.addView(keyButton(slot, columns == 1 ? 18f : 14f, false), weighted(column, 1f));
+            LinearLayout column = kit.box(LinearLayout.VERTICAL);
+            for (Slot slot : slots.subList(Math.min(c * perColumn, slots.size()), Math.min((c + 1) * perColumn, slots.size()))) {
+                float sp = tabs.get(tabIndex).pages.size() > 1 ? 12 : wide ? 14 : 18;
+                column.addView(keyButton(slot, wrapLabel(slot.label), sp, false), kit.weighted(column, 1f));
             }
-            pageHost.addView(column, weighted(pageHost, 1f));
+            pageHost.addView(column, kit.weighted(pageHost, 1f));
         }
-    }
-
-    /** The touchpad beside the number block: a drag surface above Left click, Hold and Right click. */
-    private LinearLayout buildMousePanel() {
-        LinearLayout panel = new LinearLayout(getContext());
-        panel.setOrientation(VERTICAL);
-        panel.setMotionEventSplittingEnabled(true);
-
-        panel.addView(new TouchSurface(getContext()), weighted(panel, 1f));
-
-        LinearLayout row = new LinearLayout(getContext());
-        row.setOrientation(HORIZONTAL);
-        row.setMotionEventSplittingEnabled(true);
-        row.addView(clickButton("Left", ActionPadKeyMap.MOUSE_LEFT), weighted(row, 1f));
-        holdButton = holdButton();
-        row.addView(holdButton, weighted(row, 1f));
-        row.addView(clickButton("Right", ActionPadKeyMap.MOUSE_RIGHT), weighted(row, 1f));
-        refreshHold();
-        panel.addView(row, new LayoutParams(LayoutParams.MATCH_PARENT, dp(64)));
-        return panel;
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private TextView clickButton(String label, final byte button) {
-        final TextView view = plainButton(label);
-        view.setBackground(keyBackground(false));
-        view.setOnTouchListener((v, event) -> {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    v.setPressed(true);
-                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                    mouse(button, true);
-                    break;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    v.setPressed(false);
-                    mouse(button, false);
-                    break;
-                default:
-                    break;
-            }
-            return true;
-        });
-        return view;
-    }
-
-    /** Toggles the left button held down, for dragging windows and items without keeping a finger on Left. */
-    @SuppressLint("ClickableViewAccessibility")
-    private TextView holdButton() {
-        final TextView view = plainButton("Hold");
-        view.setOnTouchListener((v, event) -> {
-            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
-                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                holdOn = !holdOn;
-                mouse(ActionPadKeyMap.MOUSE_LEFT, holdOn);
-                refreshHold();
-            }
-            return true;
-        });
-        return view;
-    }
-
-    private TextView plainButton(String label) {
-        TextView view = new TextView(getContext());
-        view.setText(label);
-        view.setGravity(Gravity.CENTER);
-        view.setTextColor(theme.text);
-        view.setTypeface(Typeface.DEFAULT_BOLD);
-        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        return view;
-    }
-
-    private void refreshHold() {
-        if (holdButton == null) return;
-        holdButton.setBackground(holdOn ? rect(theme.accent, theme.accent) : rect(theme.face, theme.border));
-        holdButton.setTextColor(holdOn ? theme.bg : theme.text);
-    }
-
-    /**
-     * Relative mouse control: one finger moves the host's cursor, a quick tap clicks left, a quick
-     * two-finger tap clicks right.
-     */
-    private final class TouchSurface extends TextView {
-        private float lastX, lastY, downX, downY, remX, remY;
-        private long downTime;
-        private int maxPointers;
-        private boolean moved;
-        private boolean resync;
-
-        TouchSurface(Context context) {
-            super(context);
-            setText("Touchpad");
-            setGravity(Gravity.CENTER);
-            setTextColor(theme.border);
-            setTypeface(Typeface.DEFAULT_BOLD);
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-            GradientDrawable d = rect(theme.bg, theme.border);
-            if (!theme.flat) d.setColors(new int[]{theme.bg, theme.bgTop});
-            setBackground(d);
-        }
-
-        @SuppressLint("ClickableViewAccessibility")
-        @Override
-        public boolean onTouchEvent(MotionEvent e) {
-            float slop = dp((int) TAP_SLOP_DP);
-            switch (e.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    downTime = e.getEventTime();
-                    downX = lastX = e.getX();
-                    downY = lastY = e.getY();
-                    remX = remY = 0;
-                    moved = false;
-                    resync = false;
-                    maxPointers = 1;
-                    return true;
-                case MotionEvent.ACTION_POINTER_DOWN:
-                    maxPointers = Math.max(maxPointers, e.getPointerCount());
-                    resync = true;
-                    return true;
-                case MotionEvent.ACTION_POINTER_UP:
-                    resync = true;
-                    return true;
-                case MotionEvent.ACTION_MOVE:
-                    if (e.getPointerCount() != 1) return true;
-                    if (resync) {
-                        lastX = e.getX();
-                        lastY = e.getY();
-                        resync = false;
-                        return true;
-                    }
-                    if (!moved && Math.hypot(e.getX() - downX, e.getY() - downY) > slop) moved = true;
-                    if (moved) {
-                        float density = getResources().getDisplayMetrics().density;
-                        remX += (e.getX() - lastX) / density * TOUCHPAD_SPEED;
-                        remY += (e.getY() - lastY) / density * TOUCHPAD_SPEED;
-                        int ix = (int) remX, iy = (int) remY;
-                        remX -= ix;
-                        remY -= iy;
-                        ix = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, ix));
-                        iy = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, iy));
-                        if (ix != 0 || iy != 0) sink.sendMouseMove((short) ix, (short) iy);
-                    }
-                    lastX = e.getX();
-                    lastY = e.getY();
-                    return true;
-                case MotionEvent.ACTION_UP:
-                    if (!moved && e.getEventTime() - downTime <= TAP_MAX_MS) {
-                        tapClick(maxPointers >= 2 ? ActionPadKeyMap.MOUSE_RIGHT : ActionPadKeyMap.MOUSE_LEFT);
-                    }
-                    return true;
-                default:
-                    return true;
-            }
-        }
-    }
-
-    private void tapClick(final byte button) {
-        mouse(button, true);
-        handler.postDelayed(() -> mouse(button, false), CLICK_HOLD_MS);
-    }
-
-    // --- Mouse sending ---
-
-    private void mouse(byte button, boolean down) {
-        Integer held = mouseHeld.get((int) button);
-        int n = held == null ? 0 : held;
-        if (down) {
-            if (n == 0) sink.sendMouseButton(button, true);
-            mouseHeld.put((int) button, n + 1);
-        } else {
-            if (n == 0) return;
-            if (n == 1) {
-                mouseHeld.remove((int) button);
-                sink.sendMouseButton(button, false);
-            } else {
-                mouseHeld.put((int) button, n - 1);
-            }
-        }
-    }
-
-    private void releaseAllMouse() {
-        for (int button : new ArrayList<>(mouseHeld.keySet())) sink.sendMouseButton((byte) button, false);
-        mouseHeld.clear();
-        holdOn = false;
-        refreshHold();
-    }
-
-    // --- Chat macros ---
-
-    /** Types a chat line, one key press every {@link #MACRO_STEP_MS}. Armed modifiers are let go first. */
-    private void runMacro(String text) {
-        for (int mod : new ArrayList<>(armed)) disarm(mod);
-        refreshModifierButtons();
-        long delay = 0;
-        for (int vk : ActionPadKeyMap.macroKeys(text)) {
-            final short key = (short) vk;
-            handler.postDelayed(() -> {
-                sink.sendKey(key, true, (byte) 0);
-                sink.sendKey(key, false, (byte) 0);
-            }, delay);
-            delay += MACRO_STEP_MS;
-        }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private TextView keyButton(final Slot slot, float textSp, boolean number) {
-        final TextView button = new TextView(getContext());
-        button.setText(number ? slot.label : wrapLabel(slot.label));
-        button.setContentDescription(slot.label);
-        button.setGravity(Gravity.CENTER);
-        button.setTextColor(theme.text);
-        button.setTypeface(Typeface.DEFAULT_BOLD);
-        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp);
-        button.setMaxLines(2);
-        button.setBackground(keyBackground(number));
-        button.setOnTouchListener((v, event) -> {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    v.setPressed(true);
-                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                    press(v, slot);
-                    break;
-                case MotionEvent.ACTION_UP:
-                case MotionEvent.ACTION_CANCEL:
-                    v.setPressed(false);
-                    release(v);
-                    break;
-                default:
-                    break;
-            }
-            return true;
-        });
-        return button;
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private TextView modifierButton(final int vk) {
-        final TextView button = new TextView(getContext());
-        button.setText(ActionPadKeyMap.modifierLabel(vk));
-        button.setGravity(Gravity.CENTER);
-        button.setTypeface(Typeface.DEFAULT_BOLD);
-        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        final boolean[] lockFired = {false};
-        final Runnable lock = () -> {
-            lockFired[0] = true;
-            button.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-            arm(vk, true);
-            refreshModifierButtons();
-        };
-        button.setOnTouchListener((v, event) -> {
-            switch (event.getActionMasked()) {
-                case MotionEvent.ACTION_DOWN:
-                    lockFired[0] = false;
-                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                    handler.postDelayed(lock, LOCK_PRESS_MS);
-                    break;
-                case MotionEvent.ACTION_UP:
-                    handler.removeCallbacks(lock);
-                    if (!lockFired[0]) {
-                        if (armed.contains(vk)) disarm(vk); else arm(vk, false);
-                        refreshModifierButtons();
-                    }
-                    break;
-                case MotionEvent.ACTION_CANCEL:
-                    handler.removeCallbacks(lock);
-                    break;
-                default:
-                    break;
-            }
-            return true;
-        });
-        return button;
-    }
-
-    // --- Key sending ---
-
-    private void press(View view, Slot slot) {
-        if (pressed.containsKey(view)) return;
-        if (slot.macro != null) {
-            runMacro(slot.macro);
-            return;
-        }
-        // A button with its own modifiers, or an isolated one, must not pick up Shift, Ctrl or Alt held on the pad.
-        boolean isolate = slot.isolated || slot.mods.length > 0;
-        if (isolate && isolatedDown++ == 0) suspendArmed();
-        byte mask = heldMask();
-        List<Integer> pressedMods = new ArrayList<>();
-        for (int mod : slot.mods) {
-            sink.sendKey((short) mod, true, mask);
-            mask |= ActionPadKeyMap.modifierFlag(mod);
-            pressedMods.add(mod);
-        }
-        sink.sendKey((short) slot.vk, true, mask);
-        pressed.put(view, new Press(slot, pressedMods, mask, isolate));
-    }
-
-    private void release(View view) {
-        Press p = pressed.remove(view);
-        if (p == null) return;
-        sink.sendKey((short) p.slot.vk, false, p.mask);
-        byte mask = p.mask;
-        for (int i = p.pressedMods.size() - 1; i >= 0; i--) {
-            int mod = p.pressedMods.get(i);
-            mask &= ~ActionPadKeyMap.modifierFlag(mod);
-            sink.sendKey((short) mod, false, mask);
-        }
-        if (p.isolated) {
-            if (--isolatedDown == 0) resumeArmed();
-        } else {
-            releaseOneShot();
-        }
-    }
-
-    /** Lets go of every pressed button, and gives back any modifier held aside for an isolated one. */
-    private void releaseAllKeys() {
-        for (View view : new ArrayList<>(pressed.keySet())) {
-            view.setPressed(false);
-            release(view);
-        }
-    }
-
-    /** Lets go of everything the pad holds: pressed keys and armed or locked modifiers. */
-    public void releaseAll() {
-        handler.removeCallbacksAndMessages(null);
-        releaseAllKeys();
-        releaseAllMouse();
-        for (int mod : new ArrayList<>(armed)) disarm(mod);
-        refreshModifierButtons();
-    }
-
-    private byte heldMask() {
-        if (isolatedDown > 0) return 0;
-        byte mask = 0;
-        for (int mod : armed) mask |= ActionPadKeyMap.modifierFlag(mod);
-        return mask;
-    }
-
-    private void arm(int vk, boolean lock) {
-        if (!armed.contains(vk)) {
-            byte before = heldMask();
-            armed.add(vk);
-            if (isolatedDown == 0) sink.sendKey((short) vk, true, before);
-        }
-        if (lock) locked.add(vk);
-    }
-
-    private void disarm(int vk) {
-        if (!armed.remove(vk)) return;
-        locked.remove(vk);
-        if (isolatedDown == 0) sink.sendKey((short) vk, false, heldMask());
-    }
-
-    /** After a number key, armed modifiers that are not locked let go. */
-    private void releaseOneShot() {
-        boolean changed = false;
-        for (int mod : new ArrayList<>(armed)) {
-            if (!locked.contains(mod)) {
-                disarm(mod);
-                changed = true;
-            }
-        }
-        if (changed) refreshModifierButtons();
-    }
-
-    private void suspendArmed() {
-        byte mask = 0;
-        for (int mod : armed) mask |= ActionPadKeyMap.modifierFlag(mod);
-        List<Integer> order = new ArrayList<>(armed);
-        for (int i = order.size() - 1; i >= 0; i--) {
-            mask &= ~ActionPadKeyMap.modifierFlag(order.get(i));
-            sink.sendKey(order.get(i).shortValue(), false, mask);
-        }
-    }
-
-    private void resumeArmed() {
-        byte mask = 0;
-        for (int mod : armed) {
-            sink.sendKey((short) mod, true, mask);
-            mask |= ActionPadKeyMap.modifierFlag(mod);
-        }
-    }
-
-    // --- Styling ---
-
-    private void refreshModifierButtons() {
-        for (Map.Entry<Integer, TextView> entry : modifierButtons.entrySet()) {
-            int vk = entry.getKey();
-            TextView button = entry.getValue();
-            if (locked.contains(vk)) {
-                button.setBackground(rect(theme.accent, theme.accent));
-                button.setTextColor(theme.bg);
-            } else if (armed.contains(vk)) {
-                button.setBackground(rect(theme.face, theme.accent));
-                button.setTextColor(theme.accent);
-            } else {
-                button.setBackground(rect(theme.face, theme.border));
-                button.setTextColor(theme.text);
-            }
-        }
-        // Number buttons show a gold border while a modifier is armed, since it applies to them.
-        for (TextView button : numberButtons) button.setActivated(!armed.isEmpty());
     }
 
     private void styleTab(TextView tab, boolean selected) {
-        tab.setBackground(selected ? rect(theme.facePressed, theme.accent) : rect(theme.bg, theme.border));
-        tab.setTextColor(selected ? theme.accent : theme.text);
-    }
-
-    private StateListDrawable keyBackground(boolean number) {
-        int face = number ? theme.faceNumber : theme.face;
-        StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_pressed}, rect(theme.facePressed, theme.accent));
-        states.addState(new int[]{android.R.attr.state_activated}, rect(face, theme.accent));
-        states.addState(new int[]{}, rect(face, theme.border));
-        return states;
-    }
-
-    private GradientDrawable rect(int fill, int stroke) {
-        GradientDrawable d = new GradientDrawable();
-        if (theme.flat) {
-            d.setColor(fill);
-        } else {
-            d.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
-            d.setColors(new int[]{lighten(fill), fill});
-        }
-        d.setCornerRadius(dp(10));
-        d.setStroke(dp(2), stroke);
-        return d;
-    }
-
-    private static int lighten(int c) {
-        int r = Math.min(255, ((c >> 16) & 0xFF) + 22);
-        int g = Math.min(255, ((c >> 8) & 0xFF) + 22);
-        int b = Math.min(255, (c & 0xFF) + 28);
-        return 0xFF000000 | (r << 16) | (g << 8) | b;
+        ActionPadTheme t = settings.theme;
+        tab.setBackground(kit.rect(selected ? t.facePressed : t.bg, selected ? t.accent : t.border));
+        tab.setTextColor(selected ? t.accent : t.text);
     }
 
     /** A long, multi-word label drops its last word onto a second line. */
@@ -698,24 +270,45 @@ public class ExternalActionPadView extends LinearLayout {
                 : label;
     }
 
-    /** Layout params that give {@code weight} of the parent's length, with a small margin all round. */
-    private LayoutParams weighted(LinearLayout parent, float weight) {
-        LayoutParams lp = parent.getOrientation() == HORIZONTAL
-                ? new LayoutParams(0, LayoutParams.MATCH_PARENT, weight)
-                : new LayoutParams(LayoutParams.MATCH_PARENT, 0, weight);
-        int margin = dp(3);
-        lp.setMargins(margin, margin, margin, margin);
-        return lp;
+    // --- Chat keyboard ---
+
+    /** Chat buttons send their key, then bring up the keyboard to type the message. Enter or Esc returns. */
+    private void openChatKeyboard() {
+        for (int i = 0; i < tabs.size(); i++) {
+            if (tabs.get(i).kind == Kind.KEYBOARD) {
+                chatReturnTab = tabIndex;
+                final int keyboard = i;
+                post(() -> showTab(keyboard));
+                return;
+            }
+        }
     }
 
-    private int dp(int value) {
-        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    private void closeChatKeyboard() {
+        final int back = chatReturnTab;
+        chatReturnTab = -1;
+        post(() -> showTab(back));
     }
 
-    /**
-     * The pad is clickable so gap touches are swallowed, and Android hands a clickable parent's pressed
-     * state to every child, which lit up all the buttons at once. Buttons set their own pressed state.
-     */
+    // --- Editor ---
+
+    private void openEditor() {
+        input.releaseAll();
+        editor.show();
+    }
+
+    private void closeEditor() {
+        editor.setVisibility(GONE);
+    }
+
+    // --- Letting go ---
+
+    /** Lets go of everything the pad holds: pressed keys and armed or locked modifiers. */
+    public void releaseAll() {
+        input.releaseAll();
+    }
+
+    /** Pressed state belongs to each button: this view is clickable only to swallow touches in the gaps. */
     @Override
     protected void dispatchSetPressed(boolean pressed) {
     }
@@ -731,10 +324,10 @@ public class ExternalActionPadView extends LinearLayout {
     private final Runnable dimTask = new Runnable() {
         @Override
         public void run() {
-            if (!dimmingEnabled || dimMs <= 0) return;
-            long remaining = dimMs - (SystemClock.uptimeMillis() - lastTouch);
+            if (!dimmingEnabled || settings.dimMs <= 0) return;
+            long remaining = settings.dimMs - (SystemClock.uptimeMillis() - lastTouch);
             if (touching || remaining > 0) {
-                dimHandler.postDelayed(this, touching ? dimMs : remaining);
+                dimHandler.postDelayed(this, touching ? settings.dimMs : remaining);
                 return;
             }
             dimmed = true;
@@ -750,10 +343,11 @@ public class ExternalActionPadView extends LinearLayout {
             animate().cancel();
             setAlpha(1f);
         }
-        if (dimmingEnabled && dimMs > 0) dimHandler.postDelayed(dimTask, dimMs);
+        if (dimmingEnabled && settings.dimMs > 0) dimHandler.postDelayed(dimTask, settings.dimMs);
     }
 
     /** Any touch brings the pad back to full brightness and still counts as a normal press. */
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         int action = ev.getActionMasked();
@@ -776,7 +370,7 @@ public class ExternalActionPadView extends LinearLayout {
         animate().cancel();
         setAlpha(1f);
         dimmed = false;
-        releaseAll();
+        input.releaseAll();
         super.onDetachedFromWindow();
     }
 }

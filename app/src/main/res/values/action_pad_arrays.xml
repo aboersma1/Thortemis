@@ -44,6 +44,7 @@
         <item>Chat</item>
         <item>F-Keys</item>
         <item>Mouse</item>
+        <item>Keyboard</item>
     </string-array>
     <string-array name="action_pad_tab_values">
         <item>interface</item>
@@ -52,6 +53,7 @@
         <item>chat</item>
         <item>fkeys</item>
         <item>mouse</item>
+        <item>keyboard</item>
     </string-array>
     <!-- Shown by default: every tab but F-Keys. -->
     <string-array name="action_pad_tab_defaults">
@@ -60,6 +62,7 @@
         <item>utility</item>
         <item>chat</item>
         <item>mouse</item>
+        <item>keyboard</item>
     </string-array>
 
     <string-array name="action_pad_dim_names">
@@ -73,5 +76,46 @@
         <item>5</item>
         <item>10</item>
         <item>30</item>
+    </string-array>
+
+    <string-array name="action_pad_label_names">
+        <item>Small</item>
+        <item>Normal</item>
+        <item>Large</item>
+    </string-array>
+    <string-array name="action_pad_label_values">
+        <item>85</item>
+        <item>100</item>
+        <item>120</item>
+    </string-array>
+
+    <string-array name="action_pad_speed_names">
+        <item>Slow</item>
+        <item>Normal</item>
+        <item>Fast</item>
+    </string-array>
+    <string-array name="action_pad_speed_values">
+        <item>15</item>
+        <item>22</item>
+        <item>32</item>
+    </string-array>
+
+    <string-array name="action_pad_extras_count_names">
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>8</item>
+        <item>10</item>
+    </string-array>
+    <string-array name="action_pad_extras_count_values">
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>8</item>
+        <item>10</item>
     </string-array>
 </resources>

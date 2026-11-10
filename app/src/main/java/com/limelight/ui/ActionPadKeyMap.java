@@ -6,19 +6,20 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Button tables for {@link ExternalActionPadView}: WoW's default key bindings, as Windows virtual-key
- * codes (what Moonlight sends to the host). Pure data, no Android dependencies.
- *
- * To use different keys, edit the tables below.
+ * Button tables for the action pad: WoW's default key bindings as Windows virtual-key codes (what
+ * Moonlight sends to the host), plus the key list used by the remap screen and the on-screen keyboard.
+ * Pure data, no Android dependencies. Players change keys in the app (see {@link PadConfig}); edit the
+ * tables below to change the defaults.
  */
 public final class ActionPadKeyMap {
     private ActionPadKeyMap() {}
 
     // Windows virtual-key codes. Letters and digits are their ASCII codes.
+    public static final int VK_BACK = 0x08;
     public static final int VK_TAB = 0x09;
     public static final int VK_RETURN = 0x0D;
-    public static final int VK_SPACE = 0x20;
     public static final int VK_ESCAPE = 0x1B;
+    public static final int VK_SPACE = 0x20;
     public static final int VK_PRIOR = 0x21;    // Page Up
     public static final int VK_NEXT = 0x22;     // Page Down
     public static final int VK_SNAPSHOT = 0x2C; // Print Screen
@@ -33,58 +34,85 @@ public final class ActionPadKeyMap {
     public static final int VK_OEM_PERIOD = 0xBE;
     public static final int VK_OEM_2 = 0xBF;    // '/' on a US keyboard
 
-    // Same values as MouseButtonPacket.BUTTON_*.
-    public static final byte MOUSE_LEFT = 0x01;
-    public static final byte MOUSE_RIGHT = 0x03;
-
-    /** The touchpad tab, shown after the key pages. */
-    public static final String MOUSE_TAB_ID = "mouse";
-    public static final String MOUSE_TAB_TITLE = "Mouse";
-
-    // Same values as KeyboardPacket.MODIFIER_*.
+    // Same values as KeyboardPacket.MODIFIER_* and MouseButtonPacket.BUTTON_*.
     public static final byte MOD_SHIFT = 0x01;
     public static final byte MOD_CTRL = 0x02;
     public static final byte MOD_ALT = 0x04;
+    public static final byte MOUSE_LEFT = 0x01;
+    public static final byte MOUSE_RIGHT = 0x03;
 
-    /** The modifier keys the pad can hold, in display order. */
+    /** The modifier keys the pad can hold, in display order; each has the {@link #modifierFlag} at the same index. */
     public static final int[] MODIFIER_KEYS = {VK_LSHIFT, VK_LCONTROL, VK_LMENU};
+    private static final String[] MODIFIER_LABELS = {"Shift", "Ctrl", "Alt"};
+    private static final byte[] MODIFIER_FLAGS = {MOD_SHIFT, MOD_CTRL, MOD_ALT};
 
     /** The KeyboardPacket modifier flag for a modifier key, or 0 for any other key. */
     public static byte modifierFlag(int vk) {
-        switch (vk) {
-            case VK_LSHIFT: return MOD_SHIFT;
-            case VK_LCONTROL: return MOD_CTRL;
-            case VK_LMENU: return MOD_ALT;
-            default: return 0;
-        }
+        int i = indexOf(MODIFIER_KEYS, vk);
+        return i < 0 ? 0 : MODIFIER_FLAGS[i];
     }
+
+    /** Short label for a modifier button. */
+    public static String modifierLabel(int vk) {
+        int i = indexOf(MODIFIER_KEYS, vk);
+        return i < 0 ? "" : MODIFIER_LABELS[i];
+    }
+
+    /** The modifier keys named by a flag mask (bit 0 Shift, bit 1 Ctrl, bit 2 Alt), in display order. */
+    public static int[] modsFromMask(int mask) {
+        int[] out = new int[Integer.bitCount(mask & 7)];
+        int n = 0;
+        for (int i = 0; i < MODIFIER_KEYS.length; i++) {
+            if ((mask & MODIFIER_FLAGS[i]) != 0) out[n++] = MODIFIER_KEYS[i];
+        }
+        return out;
+    }
+
+    public static int maskOf(int[] mods) {
+        int mask = 0;
+        for (int mod : mods) mask |= modifierFlag(mod);
+        return mask;
+    }
+
+    private static int indexOf(int[] values, int value) {
+        for (int i = 0; i < values.length; i++) if (values[i] == value) return i;
+        return -1;
+    }
+
+    // --- Buttons ---
 
     /**
      * One button. {@code mods} are held around {@code vk} (Shift+Tab). An {@code isolated} button
      * ignores any modifier the user is holding on the pad, so only its own modifiers reach the game.
+     * {@code id} is the default label, which never changes, so saved edits keep finding the button.
      */
     public static final class Slot {
+        public final String id;
         public final String label;
         public final int vk;
         public final int[] mods;
         public final boolean isolated;
         /** Text typed into the chat box (Enter, the text, Enter) instead of a single key, or null. */
         public final String macro;
+        /** Brings up the on-screen keyboard after the key, for typing a chat message. */
+        public final boolean opensKeyboard;
+        /** Outline colour chosen by the player (ARGB), or 0 for the theme's. */
+        public final int color;
 
-        Slot(String label, int vk, boolean isolated, int... mods) {
+        private Slot(String id, String label, int vk, int[] mods, boolean isolated, String macro, boolean opensKeyboard, int color) {
+            this.id = id;
             this.label = label;
             this.vk = vk;
             this.mods = mods;
             this.isolated = isolated;
-            this.macro = null;
+            this.macro = macro;
+            this.opensKeyboard = opensKeyboard;
+            this.color = color;
         }
 
-        Slot(String label, String macro) {
-            this.label = label;
-            this.vk = VK_RETURN;
-            this.mods = new int[0];
-            this.isolated = true;
-            this.macro = macro;
+        /** This button with the player's changes applied. */
+        public Slot with(String label, int vk, int[] mods, int color) {
+            return new Slot(id, label, vk, mods, isolated, macro, opensKeyboard, color);
         }
     }
 
@@ -103,17 +131,27 @@ public final class ActionPadKeyMap {
 
     /** A page button: sends its own modifiers only. */
     private static Slot page(String label, int vk, int... mods) {
-        return new Slot(label, vk, true, mods);
+        return new Slot(label, label, vk, mods, true, null, false, 0);
     }
 
-    /** A chat button: opens the chat box, types {@code text}, and sends it. */
+    /** A chat button: sends its key, then brings up the keyboard. */
+    private static Slot chat(String label, int vk) {
+        return new Slot(label, label, vk, new int[0], true, null, true, 0);
+    }
+
+    /** A chat button that types {@code text} into the chat box and sends it. */
     private static Slot macro(String label, String text) {
-        return new Slot(label, text);
+        return new Slot(label, label, VK_RETURN, new int[0], true, text, false, 0);
     }
 
-    /** A number-block button: takes whatever Shift, Ctrl or Alt is armed on the pad. */
-    private static Slot number(String label, int vk) {
-        return new Slot(label, vk, false);
+    /** A button that takes whatever Shift, Ctrl or Alt is armed on the pad. */
+    private static Slot number(String label, int vk, int... mods) {
+        return new Slot(label, label, vk, mods, false, null, false, 0);
+    }
+
+    /** A key on the on-screen keyboard: takes armed modifiers, like a number button. */
+    public static Slot key(String label, int vk) {
+        return number(label, vk);
     }
 
     /** The pages, in tab order. A page holds at most 12 buttons. */
@@ -152,8 +190,8 @@ public final class ActionPadKeyMap {
                     page("Chat page down", VK_NEXT),
                     page("Screenshot", VK_SNAPSHOT)),
             new Page("chat", "Chat",
-                    page("Open chat", VK_RETURN),
-                    page("Slash command", VK_OEM_2),
+                    chat("Open chat", VK_RETURN),
+                    chat("Slash command", VK_OEM_2),
                     page("Reply", 'R'),
                     macro("Sit", "/sit"),
                     macro("Dance", "/dance"),
@@ -162,40 +200,10 @@ public final class ActionPadKeyMap {
                     macro("Dismount", "/dismount")),
             new Page("fkeys", "F-Keys", fKeys())));
 
-    /** Ids of every tab, in display order. */
-    public static List<String> tabIds() {
-        List<String> ids = new ArrayList<>();
-        for (Page page : PAGES) ids.add(page.id);
-        ids.add(MOUSE_TAB_ID);
-        return ids;
-    }
-
     private static Slot[] fKeys() {
         Slot[] out = new Slot[12];
         for (int i = 0; i < out.length; i++) out[i] = page("F" + (i + 1), VK_F1 + i);
         return out;
-    }
-
-    /**
-     * The key presses that type {@code text} into WoW's chat box: Enter, each character, Enter.
-     * Supports lower-case letters, digits, space, '/' and '.', which need no Shift on a US layout.
-     */
-    public static int[] macroKeys(String text) {
-        int[] keys = new int[text.length() + 2];
-        keys[0] = VK_RETURN;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            int vk;
-            if (c >= 'a' && c <= 'z') vk = Character.toUpperCase(c);
-            else if (c >= '0' && c <= '9') vk = c;
-            else if (c == ' ') vk = VK_SPACE;
-            else if (c == '/') vk = VK_OEM_2;
-            else if (c == '.') vk = VK_OEM_PERIOD;
-            else throw new IllegalArgumentException("Unsupported macro character '" + c + "' in " + text);
-            keys[i + 1] = vk;
-        }
-        keys[keys.length - 1] = VK_RETURN;
-        return keys;
     }
 
     /** Action Bar 1, slots 1 to 12, shown as the 4 x 3 number block. */
@@ -210,13 +218,114 @@ public final class ActionPadKeyMap {
         return out;
     }
 
-    /** Short label for a modifier button. */
-    public static String modifierLabel(int vk) {
-        switch (vk) {
-            case VK_LSHIFT: return "Shift";
-            case VK_LCONTROL: return "Ctrl";
-            case VK_LMENU: return "Alt";
-            default: return "";
+    /** The optional Extra Buttons: F8 to F12, then Shift plus F8 to F12. */
+    public static final List<Slot> EXTRAS = Collections.unmodifiableList(buildExtras());
+
+    private static List<Slot> buildExtras() {
+        List<Slot> out = new ArrayList<>();
+        for (int i = 0; i < 5; i++) out.add(number("Ex" + (i + 1), VK_F1 + 7 + i));
+        for (int i = 0; i < 5; i++) out.add(number("Ex" + (i + 6), VK_F1 + 7 + i, VK_LSHIFT));
+        return out;
+    }
+
+    // --- Tabs ---
+
+    /** The touchpad and on-screen keyboard tabs, shown after the key pages. */
+    public static final String MOUSE_TAB_ID = "mouse";
+    public static final String KEYBOARD_TAB_ID = "keyboard";
+
+    /** Ids of every tab, in display order. */
+    public static List<String> tabIds() {
+        List<String> ids = new ArrayList<>();
+        for (Page page : PAGES) ids.add(page.id);
+        ids.add(MOUSE_TAB_ID);
+        ids.add(KEYBOARD_TAB_ID);
+        return ids;
+    }
+
+    // --- Chat macros ---
+
+    /**
+     * The key presses that type {@code text} into WoW's chat box: Enter, each character, Enter.
+     * Supports lower-case letters, digits, space, '/' and '.', which need no Shift on a US layout.
+     */
+    public static int[] macroKeys(String text) {
+        int[] keys = new int[text.length() + 2];
+        keys[0] = VK_RETURN;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            boolean plain = c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == ' ' || c == '/' || c == '.';
+            if (!plain) throw new IllegalArgumentException("Unsupported macro character '" + c + "' in " + text);
+            keys[i + 1] = vkOf(c);
+        }
+        keys[keys.length - 1] = VK_RETURN;
+        return keys;
+    }
+
+    // --- Keys the player can pick, and the on-screen keyboard ---
+
+    /** A key in the remap screen's list. */
+    public static final class KeyDef {
+        public final String group;
+        public final String label;
+        public final int vk;
+
+        KeyDef(String group, String label, int vk) {
+            this.group = group;
+            this.label = label;
+            this.vk = vk;
         }
     }
+
+    public static final List<KeyDef> KEYS = Collections.unmodifiableList(buildKeys());
+
+    private static List<KeyDef> buildKeys() {
+        List<KeyDef> k = new ArrayList<>();
+        for (char c = 'A'; c <= 'Z'; c++) k.add(new KeyDef("Letters", String.valueOf(c), c));
+        for (char c = '0'; c <= '9'; c++) k.add(new KeyDef("Digits", String.valueOf(c), c));
+        for (int i = 1; i <= 12; i++) k.add(new KeyDef("Function", "F" + i, VK_F1 + i - 1));
+        String[] edit = {"Esc", "Tab", "Enter", "Space", "Bksp", "Ins", "Del", "Home", "End", "PgUp", "PgDn", "Left", "Up", "Right", "Down"};
+        int[] editVk = {VK_ESCAPE, VK_TAB, VK_RETURN, VK_SPACE, VK_BACK, 0x2D, 0x2E, 0x24, 0x23, VK_PRIOR, VK_NEXT, 0x25, 0x26, 0x27, 0x28};
+        for (int i = 0; i < edit.length; i++) k.add(new KeyDef("Navigation", edit[i], editVk[i]));
+        for (char c : ";=,-./`[\\]'".toCharArray()) k.add(new KeyDef("Symbols", String.valueOf(c), vkOf(c)));
+        for (int i = 0; i <= 9; i++) k.add(new KeyDef("Numpad", "KP" + i, 0x60 + i));
+        String[] pad = {"KP*", "KP+", "KP-", "KP.", "KP/", "NumLk", "Caps", "PrtSc"};
+        int[] padVk = {0x6A, 0x6B, 0x6D, 0x6E, VK_DIVIDE, VK_NUMLOCK, 0x14, VK_SNAPSHOT};
+        for (int i = 0; i < pad.length; i++) k.add(new KeyDef("Numpad", pad[i], padVk[i]));
+        return k;
+    }
+
+    /** What to show for a key code: its name in the list, a modifier's name, or the code in hex. */
+    public static String labelFor(int vk) {
+        for (KeyDef key : KEYS) if (key.vk == vk) return key.label;
+        String mod = modifierLabel(vk);
+        return mod.isEmpty() ? String.format("0x%02X", vk) : mod;
+    }
+
+    /** The key code for a typed character: letters and digits are their own codes, punctuation is looked up. */
+    public static int vkOf(char c) {
+        switch (c) {
+            case ' ': return VK_SPACE;
+            case ';': return 0xBA;
+            case '=': return VK_OEM_PLUS;
+            case ',': return 0xBC;
+            case '-': return VK_OEM_MINUS;
+            case '.': return VK_OEM_PERIOD;
+            case '/': return VK_OEM_2;
+            case '`': return 0xC0;
+            case '[': return 0xDB;
+            case '\\': return 0xDC;
+            case ']': return 0xDD;
+            case '\'': return 0xDE;
+            default: return Character.toUpperCase(c);
+        }
+    }
+
+    /** Each typing key as "plain" + "shifted" characters; the keyboard shows the shifted one while Shift is armed. */
+    public static final String[][] TYPING_ROWS = {
+            {"1!", "2@", "3#", "4$", "5%", "6^", "7&", "8*", "9(", "0)", "-_", "=+"},
+            {"qQ", "wW", "eE", "rR", "tT", "yY", "uU", "iI", "oO", "pP", "[{", "]}"},
+            {"aA", "sS", "dD", "fF", "gG", "hH", "jJ", "kK", "lL", ";:", "'\""},
+            {"zZ", "xX", "cC", "vV", "bB", "nN", "mM", ",<", ".>", "/?"},
+    };
 }
