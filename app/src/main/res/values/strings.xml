@@ -757,6 +757,10 @@
     <string name="title_action_pad_haptics">Vibrate on button press</string>
     <string name="title_action_pad_label_size">Button text size</string>
     <string name="title_action_pad_touch_speed">Touchpad speed</string>
+    <string name="title_action_pad_scroll">Scroll strip on the touchpad</string>
+    <string name="title_action_pad_scroll_left">Scroll strip on the left</string>
+    <string name="title_action_pad_scroll_invert">Reverse scroll direction</string>
+    <string name="title_action_pad_scroll_speed">Scroll speed (1 slowest, 10 fastest)</string>
     <string name="title_action_pad_tap_click">Tap the touchpad to click</string>
     <string name="title_action_pad_extras">Extra buttons</string>
     <string name="summary_action_pad_extras">A row of extra keys under the number block (F8 to F12, then Shift plus F8 to F12).</string>

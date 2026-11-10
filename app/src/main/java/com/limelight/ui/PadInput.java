@@ -209,6 +209,10 @@ final class PadInput {
         sink.sendMouseMove(dx, dy);
     }
 
+    void scroll(byte notches) {
+        sink.sendMouseScroll(notches);
+    }
+
     void mouseButton(byte button, boolean isDown) {
         Integer held = mouseHeld.get((int) button);
         int n = held == null ? 0 : held;

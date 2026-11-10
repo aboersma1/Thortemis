@@ -23,6 +23,10 @@ public final class ActionPadSettings {
     private static final String KEY_LABEL_SIZE = "list_action_pad_label_size";
     private static final String KEY_TOUCH_SPEED = "list_action_pad_touch_speed";
     private static final String KEY_TAP_CLICK = "checkbox_action_pad_tap_click";
+    private static final String KEY_SCROLL = "checkbox_action_pad_scroll";
+    private static final String KEY_SCROLL_LEFT = "checkbox_action_pad_scroll_left";
+    private static final String KEY_SCROLL_INVERT = "checkbox_action_pad_scroll_invert";
+    private static final String KEY_SCROLL_SPEED = "list_action_pad_scroll_speed";
     private static final String KEY_EXTRAS = "checkbox_action_pad_extras";
     private static final String KEY_EXTRAS_COUNT = "list_action_pad_extras_count";
     private static final String KEY_CONFIG = "action_pad_config";
@@ -47,6 +51,12 @@ public final class ActionPadSettings {
     /** Host pixels per dp of finger travel on the touchpad. */
     public final float touchSpeed;
     public final boolean tapToClick;
+    /** The scroll strip beside the touchpad, which side it is on, and which way a downward drag scrolls. */
+    public final boolean scrollStrip;
+    public final boolean scrollLeft;
+    public final boolean scrollInvert;
+    /** Finger travel, in dp, for one wheel notch. */
+    public final float scrollDp;
     public final boolean extrasOn;
     public final int extrasCount;
     /** The player's button changes. The pad edits this and saves it with {@link #saveConfig}. */
@@ -69,6 +79,10 @@ public final class ActionPadSettings {
         labelScale = number(p, KEY_LABEL_SIZE, 100) / 100f;
         touchSpeed = number(p, KEY_TOUCH_SPEED, 22) / 10f;
         tapToClick = p.getBoolean(KEY_TAP_CLICK, true);
+        scrollStrip = p.getBoolean(KEY_SCROLL, true);
+        scrollLeft = p.getBoolean(KEY_SCROLL_LEFT, false);
+        scrollInvert = p.getBoolean(KEY_SCROLL_INVERT, false);
+        scrollDp = 100f / Math.max(1, Math.min(number(p, KEY_SCROLL_SPEED, 5), 10));
         extrasOn = p.getBoolean(KEY_EXTRAS, false);
         extrasCount = Math.max(1, Math.min(number(p, KEY_EXTRAS_COUNT, 5), ActionPadKeyMap.EXTRAS.size()));
         config = PadConfig.parse(p.getString(KEY_CONFIG, ""));

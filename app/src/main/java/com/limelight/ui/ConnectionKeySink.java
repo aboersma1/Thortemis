@@ -33,6 +33,14 @@ public final class ConnectionKeySink implements ExternalActionPadView.KeySink {
     }
 
     @Override
+    public void sendMouseScroll(byte notches) {
+        NvConnection conn = source.get();
+        if (conn != null) {
+            conn.sendMouseScroll(notches);
+        }
+    }
+
+    @Override
     public void sendMouseButton(byte button, boolean down) {
         NvConnection conn = source.get();
         if (conn != null) {

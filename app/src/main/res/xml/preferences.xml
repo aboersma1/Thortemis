@@ -302,6 +302,36 @@
             app:iconSpaceReserved="false" />
 
         <CheckBoxPreference
+            android:defaultValue="true"
+            android:key="checkbox_action_pad_scroll"
+            android:title="@string/title_action_pad_scroll"
+            app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:dependency="checkbox_action_pad_scroll"
+            android:key="checkbox_action_pad_scroll_left"
+            android:title="@string/title_action_pad_scroll_left"
+            app:iconSpaceReserved="false" />
+
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:dependency="checkbox_action_pad_scroll"
+            android:key="checkbox_action_pad_scroll_invert"
+            android:title="@string/title_action_pad_scroll_invert"
+            app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="5"
+            android:dependency="checkbox_action_pad_scroll"
+            android:entries="@array/action_pad_scroll_speed_values"
+            android:entryValues="@array/action_pad_scroll_speed_values"
+            android:key="list_action_pad_scroll_speed"
+            android:title="@string/title_action_pad_scroll_speed"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <CheckBoxPreference
             android:defaultValue="false"
             android:key="checkbox_action_pad_extras"
             android:summary="@string/summary_action_pad_extras"

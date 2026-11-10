@@ -1,9 +1,13 @@
 package com.limelight.ui;
 
 import android.annotation.SuppressLint;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.MotionEvent;
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -23,7 +27,12 @@ final class PadTouchpad extends LinearLayout {
         setOrientation(VERTICAL);
         setMotionEventSplittingEnabled(true);
 
-        addView(new Surface(), kit.weighted(this, 1f));
+        LinearLayout pad = kit.box(HORIZONTAL);
+        pad.addView(new Surface(), kit.weighted(pad, 1f));
+        if (kit.settings.scrollStrip) {
+            pad.addView(new ScrollStrip(), kit.settings.scrollLeft ? 0 : 1, new LayoutParams(kit.dp(36), LayoutParams.MATCH_PARENT));
+        }
+        addView(pad, kit.weighted(this, 1f));
 
         LinearLayout row = kit.box(HORIZONTAL);
         row.addView(clickButton("Left", ActionPadKeyMap.MOUSE_LEFT), kit.weighted(row, 1f));
@@ -131,6 +140,67 @@ final class PadTouchpad extends LinearLayout {
             }
             lastX = e.getX();
             lastY = e.getY();
+        }
+    }
+
+    /** A thin strip beside the touchpad. Sliding a finger along it turns the wheel; it never moves the cursor. */
+    private final class ScrollStrip extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float lastY, carry;
+        private boolean touching;
+
+        ScrollStrip() {
+            super(kit.context);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            // A faint line with arrows at both ends, brighter while a finger is on it.
+            paint.setColor(kit.theme.border);
+            paint.setAlpha(touching ? 0xC0 : 0x70);
+            float cx = getWidth() / 2f, inset = kit.dp(22), arrow = kit.dp(5);
+            canvas.drawRoundRect(cx - kit.dp(1.5f), inset, cx + kit.dp(1.5f), getHeight() - inset, kit.dp(1.5f), kit.dp(1.5f), paint);
+            for (int end = 0; end < 2; end++) {
+                float tip = end == 0 ? kit.dp(8) : getHeight() - kit.dp(8);
+                float base = tip + (end == 0 ? 1 : -1) * arrow * 1.4f;
+                Path p = new Path();
+                p.moveTo(cx, tip);
+                p.lineTo(cx - arrow, base);
+                p.lineTo(cx + arrow, base);
+                p.close();
+                canvas.drawPath(p, paint);
+            }
+        }
+
+        @SuppressLint("ClickableViewAccessibility")
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                    lastY = e.getY();
+                    carry = 0;
+                    touching = true;
+                    invalidate();
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    carry += e.getY() - lastY;
+                    lastY = e.getY();
+                    float step = kit.dp(kit.settings.scrollDp);
+                    // Dragging down scrolls the page down (wheel notches are negative), unless inverted.
+                    byte dir = (byte) (kit.settings.scrollInvert ? 1 : -1);
+                    for (; carry >= step; carry -= step) kit.input.scroll(dir);
+                    for (; carry <= -step; carry += step) kit.input.scroll((byte) -dir);
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    touching = false;
+                    invalidate();
+                    break;
+                default:
+                    break;
+            }
+            return true;
         }
     }
 }

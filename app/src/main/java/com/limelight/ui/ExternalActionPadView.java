@@ -37,6 +37,9 @@ public class ExternalActionPadView extends FrameLayout {
 
         /** Presses or releases a mouse button ({@link ActionPadKeyMap#MOUSE_LEFT} or {@link ActionPadKeyMap#MOUSE_RIGHT}). */
         default void sendMouseButton(byte button, boolean down) {}
+
+        /** Turns the mouse wheel: positive scrolls up, negative scrolls down, one unit per notch. */
+        default void sendMouseScroll(byte notches) {}
     }
 
     /** Pages with more buttons than this split into two columns. */
