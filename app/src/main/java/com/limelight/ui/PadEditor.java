@@ -131,10 +131,7 @@ final class PadEditor extends LinearLayout {
         list.addView(heading("Name"));
         List<View> name = new ArrayList<>();
         name.add(kit.tapButton("Rename", 14, () -> showRename(group, slot)));
-        name.add(kit.tapButton("Default name", 14, () -> {
-            config.setName(id, null);
-            changedAndReopen(group, id);
-        }));
+        name.add(edit("Default name", group, id, () -> config.setName(id, null)));
         list.addView(chipRows(name, 2));
 
         list.addView(heading("Outline colour"));
@@ -144,22 +141,10 @@ final class PadEditor extends LinearLayout {
 
         list.addView(heading("Place"));
         List<View> place = new ArrayList<>();
-        place.add(kit.tapButton("Move earlier", 14, () -> {
-            config.move(group.id, group.defaults, id, -1);
-            changedAndReopen(group, id);
-        }));
-        place.add(kit.tapButton("Move later", 14, () -> {
-            config.move(group.id, group.defaults, id, 1);
-            changedAndReopen(group, id);
-        }));
-        place.add(kit.tapButton(config.isHidden(id) ? "Show" : "Hide", 14, () -> {
-            config.setHidden(id, !config.isHidden(id));
-            changedAndReopen(group, id);
-        }));
-        place.add(kit.tapButton("Reset button", 14, () -> {
-            config.resetButton(id);
-            changedAndReopen(group, id);
-        }));
+        place.add(edit("Move earlier", group, id, () -> config.move(group.id, group.defaults, id, -1)));
+        place.add(edit("Move later", group, id, () -> config.move(group.id, group.defaults, id, 1)));
+        place.add(edit(config.isHidden(id) ? "Show" : "Hide", group, id, () -> config.setHidden(id, !config.isHidden(id))));
+        place.add(edit("Reset button", group, id, () -> config.resetButton(id)));
         list.addView(chipRows(place, 2));
     }
 
@@ -167,10 +152,8 @@ final class PadEditor extends LinearLayout {
         List<View> chips = new ArrayList<>();
         final int mask = ActionPadKeyMap.maskOf(slot.mods);
         for (final int mod : ActionPadKeyMap.MODIFIER_KEYS) {
-            TextView chip = kit.tapButton(ActionPadKeyMap.modifierLabel(mod), 14, () -> {
-                config.setKey(slot.id, slot.vk, mask ^ ActionPadKeyMap.modifierFlag(mod));
-                changedAndReopen(group, slot.id);
-            });
+            TextView chip = edit(ActionPadKeyMap.modifierLabel(mod), group, slot.id,
+                    () -> config.setKey(slot.id, slot.vk, mask ^ ActionPadKeyMap.modifierFlag(mod)));
             chip.setActivated((mask & ActionPadKeyMap.modifierFlag(mod)) != 0);
             chips.add(chip);
         }
@@ -189,10 +172,7 @@ final class PadEditor extends LinearLayout {
                 current = key.group;
                 grid.addView(note(current));
             }
-            TextView chip = kit.tapButton(key.label, 12, () -> {
-                config.setKey(slot.id, key.vk, ActionPadKeyMap.maskOf(slot.mods));
-                changedAndReopen(group, slot.id);
-            });
+            TextView chip = edit(key.label, group, slot.id, () -> config.setKey(slot.id, key.vk, ActionPadKeyMap.maskOf(slot.mods)));
             chip.setActivated(key.vk == slot.vk);
             chips.add(chip);
         }
@@ -201,15 +181,11 @@ final class PadEditor extends LinearLayout {
     }
 
     private View colorChip(final Group group, final String id, Slot slot, final int index) {
-        TextView chip = kit.tapButton(COLOR_NAMES[index], 13, () -> {
-            config.setColor(id, COLORS[index]);
-            changedAndReopen(group, id);
-        });
+        TextView chip = edit(COLOR_NAMES[index], group, id, () -> config.setColor(id, COLORS[index]));
         int color = COLORS[index] != 0 ? COLORS[index] : kit.theme.border;
-        chip.setBackground(kit.rect(kit.theme.face, color));
+        boolean selected = slot.color == COLORS[index];
+        chip.setBackground(kit.rect(selected ? kit.theme.facePressed : kit.theme.face, color));
         chip.setTextColor(color);
-        chip.setActivated(slot.color == COLORS[index]);
-        if (slot.color == COLORS[index]) chip.setBackground(kit.rect(kit.theme.facePressed, color));
         return chip;
     }
 
@@ -235,7 +211,8 @@ final class PadEditor extends LinearLayout {
             @Override
             public void onDone() {
                 config.setName(slot.id, name.toString());
-                changedAndReopen(group, slot.id);
+                changed();
+                showButton(group, slot.id);
             }
         }, null);
         column.addView(keyboard, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
@@ -314,8 +291,12 @@ final class PadEditor extends LinearLayout {
         onChanged.run();
     }
 
-    private void changedAndReopen(Group group, String id) {
-        changed();
-        showButton(group, id);
+    /** A button that makes one change to a button's settings, saves it, and redraws the screen. */
+    private TextView edit(String label, final Group group, final String id, final Runnable change) {
+        return kit.tapButton(label, 14, () -> {
+            change.run();
+            changed();
+            showButton(group, id);
+        });
     }
 }

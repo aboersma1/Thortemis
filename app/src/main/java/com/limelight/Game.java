@@ -41,7 +41,7 @@ import com.limelight.preferences.GlPreferences;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.profiles.ProfilesManager;
 import com.limelight.ui.ActionPadPresentation;
-import com.limelight.ui.ExternalActionPadView;
+import com.limelight.ui.ConnectionKeySink;
 import com.limelight.ui.ExternalControllerView;
 import com.limelight.ui.GameGestures;
 import com.limelight.ui.StreamContainer;
@@ -1024,32 +1024,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (secondary == null) {
             return;
         }
-        ActionPadPresentation presentation = new ActionPadPresentation(this, secondary, new ExternalActionPadView.KeySink() {
-            @Override
-            public void sendKey(short vk, boolean down, byte modifiers) {
-                if (conn != null) {
-                    conn.sendKeyboardInput(vk, down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP, modifiers, (byte) 0);
-                }
-            }
-
-            @Override
-            public void sendMouseMove(short dx, short dy) {
-                if (conn != null) {
-                    conn.sendMouseMove(dx, dy);
-                }
-            }
-
-            @Override
-            public void sendMouseButton(byte button, boolean down) {
-                if (conn != null) {
-                    if (down) {
-                        conn.sendMouseButtonDown(button);
-                    } else {
-                        conn.sendMouseButtonUp(button);
-                    }
-                }
-            }
-        });
+        ActionPadPresentation presentation = new ActionPadPresentation(this, secondary, new ConnectionKeySink(() -> conn));
         presentation.setOnDismissListener(dialog -> {
             if (actionPadPresentation == presentation) {
                 actionPadPresentation = null;

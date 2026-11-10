@@ -1,11 +1,9 @@
 package com.limelight.ui;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
-import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -16,6 +14,7 @@ import com.limelight.ui.ActionPadKeyMap.Page;
 import com.limelight.ui.ActionPadKeyMap.Slot;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -43,7 +42,6 @@ public class ExternalActionPadView extends FrameLayout {
     /** Pages with more buttons than this split into two columns. */
     private static final int SINGLE_COLUMN_MAX = 8;
     private static final int EXTRAS_PER_ROW = 5;
-    private static final float DIM_ALPHA = 0.18f;
 
     private enum Kind { KEYS, MOUSE, KEYBOARD }
 
@@ -64,6 +62,7 @@ public class ExternalActionPadView extends FrameLayout {
     private final PadInput input;
     private final PadKit kit;
     private final PadEditor editor;
+    private final PadDimmer dimmer;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<Tab> tabs = new ArrayList<>();
     private final List<TextView> tabViews = new ArrayList<>();
@@ -74,16 +73,10 @@ public class ExternalActionPadView extends FrameLayout {
     /** The tab to go back to when the keyboard, opened for chat, is done. -1 when it was not opened for chat. */
     private int chatReturnTab = -1;
 
-    // Idle dimming.
-    private final Handler dimHandler = new Handler(Looper.getMainLooper());
-    private boolean dimmingEnabled = true;
-    private boolean dimmed = false;
-    private boolean touching = false;
-    private long lastTouch = SystemClock.uptimeMillis();
-
     public ExternalActionPadView(Context context, KeySink sink) {
         super(context);
         settings = ActionPadSettings.load(context);
+        dimmer = new PadDimmer(this, settings.dimMs);
         input = new PadInput(sink, new PadInput.Scheduler() {
             @Override
             public void post(Runnable task, long delayMs) {
@@ -129,10 +122,10 @@ public class ExternalActionPadView extends FrameLayout {
         if (settings.sideBySide && !shown.isEmpty()) {
             tabs.add(new Tab("Pages", Kind.KEYS, shown));
         } else {
-            for (Page page : shown) tabs.add(new Tab(page.title, Kind.KEYS, java.util.Collections.singletonList(page)));
+            for (Page page : shown) tabs.add(new Tab(page.title, Kind.KEYS, Collections.singletonList(page)));
         }
-        if (settings.shownTabs.contains(ActionPadKeyMap.MOUSE_TAB_ID)) tabs.add(new Tab("Mouse", Kind.MOUSE, java.util.Collections.<Page>emptyList()));
-        if (settings.shownTabs.contains(ActionPadKeyMap.KEYBOARD_TAB_ID)) tabs.add(new Tab("Keyboard", Kind.KEYBOARD, java.util.Collections.<Page>emptyList()));
+        if (settings.shownTabs.contains(ActionPadKeyMap.MOUSE_TAB_ID)) tabs.add(new Tab("Mouse", Kind.MOUSE, Collections.<Page>emptyList()));
+        if (settings.shownTabs.contains(ActionPadKeyMap.KEYBOARD_TAB_ID)) tabs.add(new Tab("Keyboard", Kind.KEYBOARD, Collections.<Page>emptyList()));
     }
 
     // --- Building the UI ---
@@ -145,20 +138,24 @@ public class ExternalActionPadView extends FrameLayout {
         content.removeAllViews();
         tabViews.clear();
 
-        LinearLayout body = kit.box(LinearLayout.HORIZONTAL);
         pageHost = kit.box(LinearLayout.HORIZONTAL);
         rightColumn = kit.box(LinearLayout.VERTICAL);
-        LinearLayout.LayoutParams pageParams = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-        LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f);
-        body.addView(settings.swapSides ? rightColumn : pageHost, settings.swapSides ? rightParams : pageParams);
-        body.addView(settings.swapSides ? pageHost : rightColumn, settings.swapSides ? pageParams : rightParams);
+        LinearLayout body = kit.box(LinearLayout.HORIZONTAL);
+        View[] sides = settings.swapSides ? new View[]{rightColumn, pageHost} : new View[]{pageHost, rightColumn};
+        for (View side : sides) body.addView(side, new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
         buildRightColumn();
 
+        // The tab bar is above the buttons, or below them if the player prefers.
         View tabBar = buildTabBar();
         LinearLayout.LayoutParams barParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, kit.dp(44));
         LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f);
-        content.addView(settings.tabsBottom ? body : tabBar, settings.tabsBottom ? bodyParams : barParams);
-        content.addView(settings.tabsBottom ? tabBar : body, settings.tabsBottom ? barParams : bodyParams);
+        if (settings.tabsBottom) {
+            content.addView(body, bodyParams);
+            content.addView(tabBar, barParams);
+        } else {
+            content.addView(tabBar, barParams);
+            content.addView(body, bodyParams);
+        }
 
         showTab(tabIndex);
     }
@@ -317,59 +314,26 @@ public class ExternalActionPadView extends FrameLayout {
 
     /** Turns idle dimming on or off. Off when the host screen already dims itself. */
     public void setDimmingEnabled(boolean enabled) {
-        dimmingEnabled = enabled;
-        wake();
-    }
-
-    private final Runnable dimTask = new Runnable() {
-        @Override
-        public void run() {
-            if (!dimmingEnabled || settings.dimMs <= 0) return;
-            long remaining = settings.dimMs - (SystemClock.uptimeMillis() - lastTouch);
-            if (touching || remaining > 0) {
-                dimHandler.postDelayed(this, touching ? settings.dimMs : remaining);
-                return;
-            }
-            dimmed = true;
-            animate().alpha(DIM_ALPHA).setDuration(700).start();
-        }
-    };
-
-    private void wake() {
-        lastTouch = SystemClock.uptimeMillis();
-        dimHandler.removeCallbacks(dimTask);
-        if (dimmed) {
-            dimmed = false;
-            animate().cancel();
-            setAlpha(1f);
-        }
-        if (dimmingEnabled && settings.dimMs > 0) dimHandler.postDelayed(dimTask, settings.dimMs);
+        dimmer.setEnabled(enabled);
     }
 
     /** Any touch brings the pad back to full brightness and still counts as a normal press. */
-    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
-        int action = ev.getActionMasked();
-        lastTouch = SystemClock.uptimeMillis();
-        touching = action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL;
-        if (dimmed) wake();
+        dimmer.onTouch(ev);
         return super.dispatchTouchEvent(ev);
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        wake();
+        dimmer.start();
     }
 
     /** Never leave a key stuck down if the display goes away or the game closes mid-press. */
     @Override
     protected void onDetachedFromWindow() {
-        dimHandler.removeCallbacksAndMessages(null);
-        animate().cancel();
-        setAlpha(1f);
-        dimmed = false;
+        dimmer.stop();
         input.releaseAll();
         super.onDetachedFromWindow();
     }

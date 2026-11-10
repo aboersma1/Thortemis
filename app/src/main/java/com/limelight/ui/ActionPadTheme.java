@@ -88,19 +88,4 @@ public final class ActionPadTheme {
         }
         return ALL.get(0);
     }
-
-    /** WCAG contrast ratio between two opaque colours, 1 (none) to 21 (black on white). */
-    public static double contrast(int a, int b) {
-        double la = luminance(a), lb = luminance(b);
-        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-    }
-
-    private static double luminance(int c) {
-        return 0.2126 * channel((c >> 16) & 0xFF) + 0.7152 * channel((c >> 8) & 0xFF) + 0.0722 * channel(c & 0xFF);
-    }
-
-    private static double channel(int v) {
-        double s = v / 255.0;
-        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-    }
 }

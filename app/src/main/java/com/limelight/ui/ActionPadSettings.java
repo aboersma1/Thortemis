@@ -13,9 +13,9 @@ import java.util.Set;
  * the player's button changes ({@link PadConfig}) and saved profiles are kept.
  */
 public final class ActionPadSettings {
-    public static final String KEY_TABS = "multi_action_pad_tabs";
-    public static final String KEY_THEME = "list_action_pad_theme";
-    public static final String KEY_DIM = "list_action_pad_dim";
+    private static final String KEY_TABS = "multi_action_pad_tabs";
+    private static final String KEY_THEME = "list_action_pad_theme";
+    private static final String KEY_DIM = "list_action_pad_dim";
     private static final String KEY_SIDE_BY_SIDE = "checkbox_action_pad_side_by_side";
     private static final String KEY_SWAP_SIDES = "checkbox_action_pad_swap_sides";
     private static final String KEY_TABS_BOTTOM = "checkbox_action_pad_tabs_bottom";

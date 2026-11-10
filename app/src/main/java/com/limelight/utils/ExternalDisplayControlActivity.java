@@ -48,8 +48,8 @@ import com.limelight.LimeLog;
 import com.limelight.R;
 import com.limelight.StartExternalDisplayControlReceiver;
 import com.limelight.binding.input.virtual_controller.keyboard.KeyBoardLayoutController;
-import com.limelight.nvstream.input.KeyboardPacket;
 import com.limelight.preferences.PreferenceConfiguration;
+import com.limelight.ui.ConnectionKeySink;
 import com.limelight.ui.ExternalActionPadView;
 import com.limelight.ui.ExternalControllerView;
 
@@ -470,35 +470,10 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
      * through the stream. It sits between the corner buttons, so they stay reachable.
      */
     private void createActionPad() {
-        actionPad = new ExternalActionPadView(this, new ExternalActionPadView.KeySink() {
-            @Override
-            public void sendKey(short vk, boolean down, byte modifiers) {
-                Game game = Game.instance;
-                if (game != null && game.conn != null) {
-                    game.conn.sendKeyboardInput(vk, down ? KeyboardPacket.KEY_DOWN : KeyboardPacket.KEY_UP, modifiers, (byte) 0);
-                }
-            }
-
-            @Override
-            public void sendMouseMove(short dx, short dy) {
-                Game game = Game.instance;
-                if (game != null && game.conn != null) {
-                    game.conn.sendMouseMove(dx, dy);
-                }
-            }
-
-            @Override
-            public void sendMouseButton(byte button, boolean down) {
-                Game game = Game.instance;
-                if (game != null && game.conn != null) {
-                    if (down) {
-                        game.conn.sendMouseButtonDown(button);
-                    } else {
-                        game.conn.sendMouseButtonUp(button);
-                    }
-                }
-            }
-        });
+        actionPad = new ExternalActionPadView(this, new ConnectionKeySink(() -> {
+            Game game = Game.instance;
+            return game == null ? null : game.conn;
+        }));
         // This activity already dims its own screen after a pause.
         actionPad.setDimmingEnabled(false);
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(

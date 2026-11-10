@@ -28,6 +28,21 @@ public class ActionPadThemeTest {
         return out;
     }
 
+    /** WCAG contrast ratio between two opaque colours, 1 (none) to 21 (black on white). */
+    private static double contrast(int a, int b) {
+        double la = luminance(a), lb = luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+
+    private static double luminance(int c) {
+        return 0.2126 * channel((c >> 16) & 0xFF) + 0.7152 * channel((c >> 8) & 0xFF) + 0.0722 * channel(c & 0xFF);
+    }
+
+    private static double channel(int v) {
+        double s = v / 255.0;
+        return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    }
+
     @Test
     public void idsAreUniqueAndDefaultExists() {
         Set<String> ids = new HashSet<>();
@@ -39,16 +54,16 @@ public class ActionPadThemeTest {
     @Test
     public void textAndAccentStayReadable() {
         for (ActionPadTheme t : ActionPadTheme.ALL) {
-            assertTrue(t.id + " text on face", ActionPadTheme.contrast(t.text, t.face) >= 4.5);
-            assertTrue(t.id + " text on number face", ActionPadTheme.contrast(t.text, t.faceNumber) >= 4.5);
-            assertTrue(t.id + " text on pressed face", ActionPadTheme.contrast(t.text, t.facePressed) >= 3.0);
-            assertTrue(t.id + " text on panel", ActionPadTheme.contrast(t.text, t.bg) >= 4.5);
+            assertTrue(t.id + " text on face", contrast(t.text, t.face) >= 4.5);
+            assertTrue(t.id + " text on number face", contrast(t.text, t.faceNumber) >= 4.5);
+            assertTrue(t.id + " text on pressed face", contrast(t.text, t.facePressed) >= 3.0);
+            assertTrue(t.id + " text on panel", contrast(t.text, t.bg) >= 4.5);
             // Selected tabs and locked modifiers draw the accent as text, or panel colour on an accent fill.
-            assertTrue(t.id + " accent on face", ActionPadTheme.contrast(t.accent, t.face) >= 3.0);
-            assertTrue(t.id + " accent on pressed face", ActionPadTheme.contrast(t.accent, t.facePressed) >= 1.5);
-            assertTrue(t.id + " panel on accent", ActionPadTheme.contrast(t.bg, t.accent) >= 3.0);
+            assertTrue(t.id + " accent on face", contrast(t.accent, t.face) >= 3.0);
+            assertTrue(t.id + " accent on pressed face", contrast(t.accent, t.facePressed) >= 1.5);
+            assertTrue(t.id + " panel on accent", contrast(t.bg, t.accent) >= 3.0);
             // Buttons need an outline you can see against the panel.
-            assertTrue(t.id + " border on panel", ActionPadTheme.contrast(t.border, t.bg) >= 1.8);
+            assertTrue(t.id + " border on panel", contrast(t.border, t.bg) >= 1.8);
         }
     }
 
