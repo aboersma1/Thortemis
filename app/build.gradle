@@ -111,7 +111,8 @@ android {
             resValue "string", "app_label_root", "Thortemis (Root, debug)"
             resValue "string", "app_label_game", "Thortemis (Game, debug)"
 
-            minifyEnabled true
+            // No shrinking in debug, so crash traces show real class and method names.
+            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         release {
