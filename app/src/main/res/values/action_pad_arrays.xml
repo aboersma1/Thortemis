@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Keep the theme ids in step with ActionPadTheme.ALL (ActionPadThemeTest checks this). -->
+    <string-array name="action_pad_theme_names">
+        <item>Alliance Blue</item>
+        <item>Classic</item>
+        <item>The Burning Crusade</item>
+        <item>Wrath of the Lich King</item>
+        <item>Cataclysm</item>
+        <item>Mists of Pandaria</item>
+        <item>Warlords of Draenor</item>
+        <item>Legion</item>
+        <item>Battle for Azeroth</item>
+        <item>Shadowlands</item>
+        <item>Dragonflight</item>
+        <item>The War Within</item>
+        <item>Midnight</item>
+        <item>OLED Black</item>
+        <item>Cyberpunk</item>
+    </string-array>
+    <string-array name="action_pad_theme_values">
+        <item>blue</item>
+        <item>classic</item>
+        <item>tbc</item>
+        <item>wotlk</item>
+        <item>cata</item>
+        <item>mop</item>
+        <item>wod</item>
+        <item>legion</item>
+        <item>bfa</item>
+        <item>shadowlands</item>
+        <item>dragonflight</item>
+        <item>tww</item>
+        <item>midnight</item>
+        <item>oled</item>
+        <item>cyberpunk</item>
+    </string-array>
+
+    <!-- Keep the tab ids in step with ActionPadKeyMap.tabIds(). -->
+    <string-array name="action_pad_tab_names">
+        <item>Interface</item>
+        <item>Target</item>
+        <item>Utility</item>
+        <item>Chat</item>
+        <item>F-Keys</item>
+        <item>Mouse</item>
+    </string-array>
+    <string-array name="action_pad_tab_values">
+        <item>interface</item>
+        <item>target</item>
+        <item>utility</item>
+        <item>chat</item>
+        <item>fkeys</item>
+        <item>mouse</item>
+    </string-array>
+    <!-- Shown by default: every tab but F-Keys. -->
+    <string-array name="action_pad_tab_defaults">
+        <item>interface</item>
+        <item>target</item>
+        <item>utility</item>
+        <item>chat</item>
+        <item>mouse</item>
+    </string-array>
+
+    <string-array name="action_pad_dim_names">
+        <item>Never</item>
+        <item>After 5 seconds</item>
+        <item>After 10 seconds</item>
+        <item>After 30 seconds</item>
+    </string-array>
+    <string-array name="action_pad_dim_values">
+        <item>0</item>
+        <item>5</item>
+        <item>10</item>
+        <item>30</item>
+    </string-array>
+</resources>

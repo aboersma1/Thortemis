@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
@@ -62,17 +63,19 @@ public class ExternalActionPadView extends LinearLayout {
     /** Host pixels moved per dp of finger travel on the touchpad. */
     private static final float TOUCHPAD_SPEED = 2.2f;
 
-    // Blue "Alliance" look: deep navy panel, steel-blue trim, frost-blue highlights.
-    private static final int BG = 0xFF08111F;
-    private static final int BG_TOP = 0xFF0F2038;
-    private static final int FACE = 0xFF16294A;
-    private static final int FACE_NUMBER = 0xFF1B3560;
-    private static final int FACE_PRESSED = 0xFF2F6AB8;
-    private static final int BORDER = 0xFF3F72B0;
-    private static final int ACCENT = 0xFF7CC8FF;
-    private static final int TEXT = 0xFFE8F3FF;
+    private static final float DIM_ALPHA = 0.18f;
 
     private final KeySink sink;
+    private final ActionPadTheme theme;
+    /** The tabs the user chose to show, in order. */
+    private final List<Tab> visibleTabs = new ArrayList<>();
+    private final LinearLayout rightColumn;
+    private final Handler dimHandler = new Handler(Looper.getMainLooper());
+    private final long dimMs;
+    private boolean dimmingEnabled = true;
+    private boolean dimmed = false;
+    private boolean touching = false;
+    private long lastTouch = SystemClock.uptimeMillis();
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     /** Modifiers the user has armed or locked on the pad, in the order they were armed. */
@@ -95,6 +98,17 @@ public class ExternalActionPadView extends LinearLayout {
     private final LinearLayout pageHost;
     private int pageIndex = 0;
 
+    /** A tab: a page of key buttons, or (with no page) the touchpad. */
+    private static final class Tab {
+        final String title;
+        final Page page;
+
+        Tab(String title, Page page) {
+            this.title = title;
+            this.page = page;
+        }
+    }
+
     private static final class Press {
         final Slot slot;
         final List<Integer> pressedMods;
@@ -112,13 +126,21 @@ public class ExternalActionPadView extends LinearLayout {
     public ExternalActionPadView(Context context, KeySink sink) {
         super(context);
         this.sink = sink;
+        ActionPadSettings settings = ActionPadSettings.load(context);
+        this.theme = settings.theme;
+        this.dimMs = settings.dimMs;
+        for (Page page : ActionPadKeyMap.PAGES) {
+            if (settings.shownTabs.contains(page.id)) visibleTabs.add(new Tab(page.title, page));
+        }
+        if (settings.shownTabs.contains(ActionPadKeyMap.MOUSE_TAB_ID)) {
+            visibleTabs.add(new Tab(ActionPadKeyMap.MOUSE_TAB_TITLE, null));
+        }
 
         setOrientation(VERTICAL);
         // Swallow touches in the gaps, so they do not move the host's mouse.
         setClickable(true);
         setMotionEventSplittingEnabled(true);
-        GradientDrawable panel = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{BG_TOP, BG});
-        setBackground(panel);
+        setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{theme.bgTop, theme.bg}));
         int pad = dp(8);
         setPadding(pad, pad, pad, pad);
 
@@ -138,6 +160,7 @@ public class ExternalActionPadView extends LinearLayout {
         right.setOrientation(VERTICAL);
         right.setMotionEventSplittingEnabled(true);
         body.addView(right, new LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
+        rightColumn = right;
 
         right.addView(buildModifierRow(), weighted(right, 0.7f));
         right.addView(buildNumberBlock(), weighted(right, 4f));
@@ -150,10 +173,10 @@ public class ExternalActionPadView extends LinearLayout {
     private LinearLayout buildTabBar() {
         LinearLayout bar = new LinearLayout(getContext());
         bar.setOrientation(HORIZONTAL);
-        for (int i = 0; i < pageCount(); i++) {
+        for (int i = 0; i < visibleTabs.size(); i++) {
             final int index = i;
             TextView tab = new TextView(getContext());
-            tab.setText(i < ActionPadKeyMap.PAGES.size() ? ActionPadKeyMap.PAGES.get(i).title : ActionPadKeyMap.MOUSE_TAB_TITLE);
+            tab.setText(visibleTabs.get(i).title);
             tab.setGravity(Gravity.CENTER);
             tab.setSingleLine(true);
             tab.setTypeface(Typeface.DEFAULT_BOLD);
@@ -201,15 +224,22 @@ public class ExternalActionPadView extends LinearLayout {
     public void showPage(int index) {
         releaseAllKeys();
         releaseAllMouse();
-        pageIndex = Math.max(0, Math.min(index, pageCount() - 1));
+        pageIndex = Math.max(0, Math.min(index, visibleTabs.size() - 1));
         for (int i = 0; i < tabs.size(); i++) styleTab(tabs.get(i), i == pageIndex);
 
         pageHost.removeAllViews();
-        if (pageIndex == ActionPadKeyMap.PAGES.size()) {
+        Page page = visibleTabs.get(pageIndex).page;
+        boolean mouseTab = page == null;
+        // The touchpad takes the whole width, so Shift/Ctrl/Alt and the number block step aside.
+        if (mouseTab) {
+            for (int mod : new ArrayList<>(armed)) disarm(mod);
+            refreshModifierButtons();
+        }
+        rightColumn.setVisibility(mouseTab ? GONE : VISIBLE);
+        if (mouseTab) {
             pageHost.addView(buildMousePanel(), weighted(pageHost, 1f));
             return;
         }
-        Page page = ActionPadKeyMap.PAGES.get(pageIndex);
         int columns = page.slots.size() > SINGLE_COLUMN_MAX ? 2 : 1;
         int perColumn = (page.slots.size() + columns - 1) / columns;
         for (int c = 0; c < columns; c++) {
@@ -223,11 +253,6 @@ public class ExternalActionPadView extends LinearLayout {
             }
             pageHost.addView(column, weighted(pageHost, 1f));
         }
-    }
-
-    /** The key pages, plus the touchpad tab after them. */
-    private static int pageCount() {
-        return ActionPadKeyMap.PAGES.size() + 1;
     }
 
     /** The touchpad beside the number block: a drag surface above Left click, Hold and Right click. */
@@ -294,7 +319,7 @@ public class ExternalActionPadView extends LinearLayout {
         TextView view = new TextView(getContext());
         view.setText(label);
         view.setGravity(Gravity.CENTER);
-        view.setTextColor(TEXT);
+        view.setTextColor(theme.text);
         view.setTypeface(Typeface.DEFAULT_BOLD);
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         return view;
@@ -302,8 +327,8 @@ public class ExternalActionPadView extends LinearLayout {
 
     private void refreshHold() {
         if (holdButton == null) return;
-        holdButton.setBackground(holdOn ? rect(ACCENT, ACCENT) : rect(FACE, BORDER));
-        holdButton.setTextColor(holdOn ? BG : TEXT);
+        holdButton.setBackground(holdOn ? rect(theme.accent, theme.accent) : rect(theme.face, theme.border));
+        holdButton.setTextColor(holdOn ? theme.bg : theme.text);
     }
 
     /**
@@ -321,11 +346,11 @@ public class ExternalActionPadView extends LinearLayout {
             super(context);
             setText("Touchpad");
             setGravity(Gravity.CENTER);
-            setTextColor(BORDER);
+            setTextColor(theme.border);
             setTypeface(Typeface.DEFAULT_BOLD);
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-            GradientDrawable d = rect(BG, BORDER);
-            d.setColors(new int[]{BG, BG_TOP});
+            GradientDrawable d = rect(theme.bg, theme.border);
+            if (!theme.flat) d.setColors(new int[]{theme.bg, theme.bgTop});
             setBackground(d);
         }
 
@@ -438,7 +463,7 @@ public class ExternalActionPadView extends LinearLayout {
         button.setText(number ? slot.label : wrapLabel(slot.label));
         button.setContentDescription(slot.label);
         button.setGravity(Gravity.CENTER);
-        button.setTextColor(TEXT);
+        button.setTextColor(theme.text);
         button.setTypeface(Typeface.DEFAULT_BOLD);
         button.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSp);
         button.setMaxLines(2);
@@ -617,14 +642,14 @@ public class ExternalActionPadView extends LinearLayout {
             int vk = entry.getKey();
             TextView button = entry.getValue();
             if (locked.contains(vk)) {
-                button.setBackground(rect(ACCENT, ACCENT));
-                button.setTextColor(BG);
+                button.setBackground(rect(theme.accent, theme.accent));
+                button.setTextColor(theme.bg);
             } else if (armed.contains(vk)) {
-                button.setBackground(rect(FACE, ACCENT));
-                button.setTextColor(ACCENT);
+                button.setBackground(rect(theme.face, theme.accent));
+                button.setTextColor(theme.accent);
             } else {
-                button.setBackground(rect(FACE, BORDER));
-                button.setTextColor(TEXT);
+                button.setBackground(rect(theme.face, theme.border));
+                button.setTextColor(theme.text);
             }
         }
         // Number buttons show a gold border while a modifier is armed, since it applies to them.
@@ -632,23 +657,27 @@ public class ExternalActionPadView extends LinearLayout {
     }
 
     private void styleTab(TextView tab, boolean selected) {
-        tab.setBackground(selected ? rect(FACE_PRESSED, ACCENT) : rect(BG, BORDER));
-        tab.setTextColor(selected ? ACCENT : TEXT);
+        tab.setBackground(selected ? rect(theme.facePressed, theme.accent) : rect(theme.bg, theme.border));
+        tab.setTextColor(selected ? theme.accent : theme.text);
     }
 
     private StateListDrawable keyBackground(boolean number) {
-        int face = number ? FACE_NUMBER : FACE;
+        int face = number ? theme.faceNumber : theme.face;
         StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_pressed}, rect(FACE_PRESSED, ACCENT));
-        states.addState(new int[]{android.R.attr.state_activated}, rect(face, ACCENT));
-        states.addState(new int[]{}, rect(face, BORDER));
+        states.addState(new int[]{android.R.attr.state_pressed}, rect(theme.facePressed, theme.accent));
+        states.addState(new int[]{android.R.attr.state_activated}, rect(face, theme.accent));
+        states.addState(new int[]{}, rect(face, theme.border));
         return states;
     }
 
     private GradientDrawable rect(int fill, int stroke) {
         GradientDrawable d = new GradientDrawable();
-        d.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
-        d.setColors(new int[]{lighten(fill), fill});
+        if (theme.flat) {
+            d.setColor(fill);
+        } else {
+            d.setOrientation(GradientDrawable.Orientation.TOP_BOTTOM);
+            d.setColors(new int[]{lighten(fill), fill});
+        }
         d.setCornerRadius(dp(10));
         d.setStroke(dp(2), stroke);
         return d;
@@ -691,9 +720,62 @@ public class ExternalActionPadView extends LinearLayout {
     protected void dispatchSetPressed(boolean pressed) {
     }
 
+    // --- Dimming ---
+
+    /** Turns idle dimming on or off. Off when the host screen already dims itself. */
+    public void setDimmingEnabled(boolean enabled) {
+        dimmingEnabled = enabled;
+        wake();
+    }
+
+    private final Runnable dimTask = new Runnable() {
+        @Override
+        public void run() {
+            if (!dimmingEnabled || dimMs <= 0) return;
+            long remaining = dimMs - (SystemClock.uptimeMillis() - lastTouch);
+            if (touching || remaining > 0) {
+                dimHandler.postDelayed(this, touching ? dimMs : remaining);
+                return;
+            }
+            dimmed = true;
+            animate().alpha(DIM_ALPHA).setDuration(700).start();
+        }
+    };
+
+    private void wake() {
+        lastTouch = SystemClock.uptimeMillis();
+        dimHandler.removeCallbacks(dimTask);
+        if (dimmed) {
+            dimmed = false;
+            animate().cancel();
+            setAlpha(1f);
+        }
+        if (dimmingEnabled && dimMs > 0) dimHandler.postDelayed(dimTask, dimMs);
+    }
+
+    /** Any touch brings the pad back to full brightness and still counts as a normal press. */
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        int action = ev.getActionMasked();
+        lastTouch = SystemClock.uptimeMillis();
+        touching = action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL;
+        if (dimmed) wake();
+        return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        wake();
+    }
+
     /** Never leave a key stuck down if the display goes away or the game closes mid-press. */
     @Override
     protected void onDetachedFromWindow() {
+        dimHandler.removeCallbacksAndMessages(null);
+        animate().cancel();
+        setAlpha(1f);
+        dimmed = false;
         releaseAll();
         super.onDetachedFromWindow();
     }

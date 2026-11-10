@@ -746,4 +746,8 @@
 
     <string name="title_checkbox_full_screen">Enable Full Screen</string>
     <string name="summary_checkbox_full_screen">Hide system bars with immersive mode</string>
+    <string name="title_action_pad_theme">Action pad theme</string>
+    <string name="title_action_pad_tabs">Action pad tabs</string>
+    <string name="summary_action_pad_tabs">Choose which tabs the pad shows. Changes apply the next time the pad opens.</string>
+    <string name="title_action_pad_dim">Dim action pad when idle</string>
 </resources>

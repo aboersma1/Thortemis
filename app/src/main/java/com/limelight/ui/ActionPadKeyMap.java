@@ -37,7 +37,8 @@ public final class ActionPadKeyMap {
     public static final byte MOUSE_LEFT = 0x01;
     public static final byte MOUSE_RIGHT = 0x03;
 
-    /** Title of the touchpad tab, shown after the key pages. */
+    /** The touchpad tab, shown after the key pages. */
+    public static final String MOUSE_TAB_ID = "mouse";
     public static final String MOUSE_TAB_TITLE = "Mouse";
 
     // Same values as KeyboardPacket.MODIFIER_*.
@@ -88,10 +89,13 @@ public final class ActionPadKeyMap {
     }
 
     public static final class Page {
+        /** Stable id, used by the tab setting. */
+        public final String id;
         public final String title;
         public final List<Slot> slots;
 
-        Page(String title, Slot... slots) {
+        Page(String id, String title, Slot... slots) {
+            this.id = id;
             this.title = title;
             this.slots = Collections.unmodifiableList(Arrays.asList(slots));
         }
@@ -114,7 +118,7 @@ public final class ActionPadKeyMap {
 
     /** The pages, in tab order. A page holds at most 12 buttons. */
     public static final List<Page> PAGES = Collections.unmodifiableList(Arrays.asList(
-            new Page("Interface",
+            new Page("interface", "Interface",
                     page("Character", 'C'),
                     page("Spellbook", 'P'),
                     page("Talents", 'N'),
@@ -128,7 +132,7 @@ public final class ActionPadKeyMap {
                     page("Bags", 'B'),
                     // Escape opens the game menu ("System") when nothing else is open.
                     page("System", VK_ESCAPE)),
-            new Page("Target",
+            new Page("target", "Target",
                     page("Self", VK_F1),
                     page("Party 1", VK_F1 + 1),
                     page("Party 2", VK_F1 + 2),
@@ -136,7 +140,7 @@ public final class ActionPadKeyMap {
                     page("Party 4", VK_F1 + 4),
                     page("Next enemy", VK_TAB),
                     page("Previous enemy", VK_TAB, VK_LSHIFT)),
-            new Page("Utility",
+            new Page("utility", "Utility",
                     page("Sheathe weapons", 'Z'),
                     page("Auto-run", VK_NUMLOCK),
                     page("Walk / run", VK_DIVIDE),
@@ -147,7 +151,7 @@ public final class ActionPadKeyMap {
                     page("Chat page up", VK_PRIOR),
                     page("Chat page down", VK_NEXT),
                     page("Screenshot", VK_SNAPSHOT)),
-            new Page("Chat",
+            new Page("chat", "Chat",
                     page("Open chat", VK_RETURN),
                     page("Slash command", VK_OEM_2),
                     page("Reply", 'R'),
@@ -156,7 +160,15 @@ public final class ActionPadKeyMap {
                     macro("Follow", "/follow"),
                     macro("Assist", "/assist"),
                     macro("Dismount", "/dismount")),
-            new Page("F-Keys", fKeys())));
+            new Page("fkeys", "F-Keys", fKeys())));
+
+    /** Ids of every tab, in display order. */
+    public static List<String> tabIds() {
+        List<String> ids = new ArrayList<>();
+        for (Page page : PAGES) ids.add(page.id);
+        ids.add(MOUSE_TAB_ID);
+        return ids;
+    }
 
     private static Slot[] fKeys() {
         Slot[] out = new Slot[12];

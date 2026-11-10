@@ -2,6 +2,8 @@ package com.limelight.ui;
 
 import android.app.Presentation;
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.Display;
 import android.view.WindowManager;
@@ -25,6 +27,8 @@ public class ActionPadPresentation extends Presentation {
         super.onCreate(savedInstanceState);
         pad = new ExternalActionPadView(getContext(), sink);
         setContentView(pad);
+        // Black behind the pad, so a dimmed pad fades to black rather than to the window's own colour.
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.BLACK));
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
     }
 

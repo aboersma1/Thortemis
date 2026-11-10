@@ -499,6 +499,8 @@ public class ExternalDisplayControlActivity extends AppCompatActivity implements
                 }
             }
         });
+        // This activity already dims its own screen after a pause.
+        actionPad.setDimmingEnabled(false);
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         params.topMargin = dpToPx(56);

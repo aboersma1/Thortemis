@@ -224,6 +224,33 @@
             android:summary="@string/summary_action_pad"
             android:title="@string/title_action_pad"
             app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="blue"
+            android:entries="@array/action_pad_theme_names"
+            android:entryValues="@array/action_pad_theme_values"
+            android:key="list_action_pad_theme"
+            android:title="@string/title_action_pad_theme"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <MultiSelectListPreference
+            android:defaultValue="@array/action_pad_tab_defaults"
+            android:entries="@array/action_pad_tab_names"
+            android:entryValues="@array/action_pad_tab_values"
+            android:key="multi_action_pad_tabs"
+            android:summary="@string/summary_action_pad_tabs"
+            android:title="@string/title_action_pad_tabs"
+            app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="10"
+            android:entries="@array/action_pad_dim_names"
+            android:entryValues="@array/action_pad_dim_values"
+            android:key="list_action_pad_dim"
+            android:title="@string/title_action_pad_dim"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
     <PreferenceCategory
