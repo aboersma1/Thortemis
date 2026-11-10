@@ -31,6 +31,7 @@ public final class ActionPadSettings {
     private static final String KEY_EXTRAS_COUNT = "list_action_pad_extras_count";
     private static final String KEY_CONFIG = "action_pad_config";
     private static final String KEY_PROFILE = "action_pad_profile_";
+    private static final String KEY_ACTIVE_PROFILE = "action_pad_active_profile";
 
     public static final int PROFILE_SLOTS = 3;
     /** The F-keys page is hidden unless the player turns it on. */
@@ -118,7 +119,40 @@ public final class ActionPadSettings {
     }
 
     public void saveProfile(int slot) {
-        prefs.edit().putString(KEY_PROFILE + slot, config.serialize()).apply();
+        prefs.edit().putString(KEY_PROFILE + slot, config.serialize()).putInt(KEY_ACTIVE_PROFILE, slot).apply();
+    }
+
+    /** The profile last saved or loaded, or 0 if none. */
+    public int activeProfile() {
+        return prefs.getInt(KEY_ACTIVE_PROFILE, 0);
+    }
+
+    /** True when at least one profile has been saved. */
+    public boolean hasAnyProfile() {
+        return nextSlot(0, savedSlots()) != 0;
+    }
+
+    /** Loads the next saved profile after the active one (wrapping round), and returns its slot, or 0 if none. */
+    public int loadNextProfile() {
+        int slot = nextSlot(activeProfile(), savedSlots());
+        if (slot != 0) loadProfile(slot);
+        return slot;
+    }
+
+    private boolean[] savedSlots() {
+        boolean[] used = new boolean[PROFILE_SLOTS + 1];
+        for (int i = 1; i <= PROFILE_SLOTS; i++) used[i] = hasProfile(i);
+        return used;
+    }
+
+    /** The first used slot after {@code active}, wrapping round ({@code used[0]} is ignored); 0 if none is used. */
+    static int nextSlot(int active, boolean[] used) {
+        int slots = used.length - 1;
+        for (int step = 1; step <= slots; step++) {
+            int slot = (active + step - 1) % slots + 1;
+            if (used[slot]) return slot;
+        }
+        return 0;
     }
 
     /** Replaces the current changes with the ones saved in {@code slot} (and saves them). */
@@ -126,6 +160,7 @@ public final class ActionPadSettings {
         PadConfig saved = PadConfig.parse(prefs.getString(KEY_PROFILE + slot, ""));
         config.clear();
         config.replaceWith(saved);
+        prefs.edit().putInt(KEY_ACTIVE_PROFILE, slot).apply();
         saveConfig();
     }
 }

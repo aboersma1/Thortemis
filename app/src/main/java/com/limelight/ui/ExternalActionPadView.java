@@ -176,6 +176,15 @@ public class ExternalActionPadView extends FrameLayout {
             tabViews.add(tab);
             bar.addView(tab, kit.weighted(bar, 1f));
         }
+        if (settings.hasAnyProfile()) {
+            // One tap swaps to the next saved profile, e.g. another character or spec.
+            String label = settings.activeProfile() == 0 ? "Profile" : "Profile " + settings.activeProfile();
+            bar.addView(kit.tapButton(label, 13, () -> {
+                input.releaseAll();
+                settings.loadNextProfile();
+                rebuild();
+            }), kit.weighted(bar, 1.2f));
+        }
         TextView edit = kit.tapButton("Edit", 13, this::openEditor);
         bar.addView(edit, kit.weighted(bar, 0.8f));
         return bar;

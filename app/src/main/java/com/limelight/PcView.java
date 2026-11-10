@@ -269,6 +269,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
 
     private void completeOnCreate() {
         completeOnCreateCalled = true;
+        com.limelight.ui.WhatsNew.showOnce(this);
 
         shortcutHelper = new ShortcutHelper(this);
 

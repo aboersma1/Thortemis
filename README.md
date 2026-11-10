@@ -11,9 +11,9 @@ Artemis is currently the best fork of Moonlight with loads of optimizations for 
 
 A more seamless experience with virtual display will be Artemis paired with [Apollo](https://github.com/ClassicOldSong/Apollo).
 
-# WoW Action Pad (this fork)
+# Thortemis (WoW action pad)
 
-This fork of Artemis adds an **action pad** for two-screen handhelds such as the AYN Thor. While you stream a game from your PC with Apollo or Sunshine, the second (bottom) screen becomes a touch panel of keys, so you can reach your number bar, interface shortcuts and mouse without a keyboard. It was built for World of Warcraft but sends ordinary Windows key codes, so it works for any game or app.
+Thortemis is a fork of Artemis that adds an **action pad** for two-screen handhelds such as the AYN Thor. While you stream a game from your PC with Apollo or Sunshine, the second (bottom) screen becomes a touch panel of keys, so you can reach your number bar, interface shortcuts and mouse without a keyboard. It was built for World of Warcraft but sends ordinary Windows key codes, so it works for any game or app.
 
 > **Status:** early release. The pad's logic has automated tests (44 unit tests), but the screens have so far only been checked by building them, not on many devices. Please report problems with your device model and a description of what you saw.
 
@@ -28,13 +28,15 @@ This fork of Artemis adds an **action pad** for two-screen handhelds such as the
 - **Customize:** change any button's key, name and outline colour, hide buttons, reorder them, and save up to three profiles. Reset one button or everything.
 - **Looks:** 15 themes (Alliance Blue default, Classic, TBC, Wrath, Cata, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight, TWW, Midnight, OLED Black, Cyberpunk).
 - **Layout options:** show pages side by side, swap sides, put the tab bar at the bottom, change text size.
-- **Comfort:** the pad dims when idle (off, 5, 10 or 30 seconds; 10 by default) and can vibrate on press.
+- **Profiles:** save up to three layouts (for example one per character or spec) and swap between them with the Profile button in the tab bar.
+- **Comfort:** the pad appears once the stream has started, dims when idle (off, 5, 10 or 30 seconds; 10 by default) and can vibrate on press (a setting, on by default).
+- **What's new:** a short notes screen shows once after each update, and again from Settings, What's new.
 
 ## Using it
 
-1. Install the APK and connect to your PC as usual.
+1. Install the APK (it installs next to Moonlight or Artemis, as its own app, `com.thortemis`) and connect to your PC as usual.
 2. Open Artemis settings and make sure **Action pad on second screen** is on (it is by default). The tabs, theme, dimming, touchpad, scroll and extras options are in the same section. Settings apply the next time the pad opens.
-3. Start a stream. The pad appears on the second screen. Tap **Edit** in its tab bar to customize buttons.
+3. Start a stream. The pad appears on the second screen once the stream is running. Tap **Edit** in its tab bar to customize buttons.
 
 Not used in Fully External Display Mode, which has its own pad.
 
@@ -42,7 +44,7 @@ Not used in Fully External Display Mode, which has its own pad.
 
 - Scroll wheel direction may need the **Reverse scroll direction** setting on some setups.
 - Saved button changes are tied to each button's default label, so a future version that renames defaults could reset those buttons.
-- Builds are debug builds for now.
+- The release build is shrunk with R8 and has had no device testing yet; if something crashes that works in a debug build, report it.
 
 ## For developers
 

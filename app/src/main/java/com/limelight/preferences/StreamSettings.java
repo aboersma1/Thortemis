@@ -846,6 +846,14 @@ public class StreamSettings extends AppCompatActivity {
                 });
             }
 
+            _pref = findPreference("pref_whats_new");
+            if (_pref != null) {
+                _pref.setOnPreferenceClickListener(preference -> {
+                    com.limelight.ui.WhatsNew.show(requireActivity());
+                    return true;
+                });
+            }
+
             _pref = findPreference("pref_debug_info");
             if (_pref != null) {
                 _pref.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {

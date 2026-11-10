@@ -1017,7 +1017,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
      * controller activity hosts its own pad, so this stays off there.
      */
     private void showActionPadPresentation() {
-        if (!prefConfig.enableActionPad || prefConfig.enableFullExDisplay || actionPadPresentation != null) {
+        // The pad stays off until the stream is actually running.
+        if (!connected || !prefConfig.enableActionPad || prefConfig.enableFullExDisplay || actionPadPresentation != null) {
             return;
         }
         Display secondary = getSecondaryDisplay(this);
@@ -3736,6 +3737,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 connected = true;
                 connecting = false;
                 updatePipAutoEnter();
+                showActionPadPresentation();
 
                 // Hide the mouse cursor now after a short delay.
                 // Doing it before dismissing the spinner seems to be undone

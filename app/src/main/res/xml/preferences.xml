@@ -1139,23 +1139,17 @@
             app:iconSpaceReserved="false" />
 
         <Preference
+            android:key="pref_whats_new"
+            android:summary="@string/summary_whats_new"
+            android:title="@string/title_whats_new"
+            app:iconSpaceReserved="false" />
+
+        <Preference
             android:key="pref_debug_info"
             android:summary="@string/summary_debug_info"
             android:title="@string/title_debug_info"
             app:iconSpaceReserved="false" />
 
-        <com.limelight.preferences.WebLauncherPreference
-            url="https://github.com/ClassicOldSong/moonlight-android/releases"
-            android:key="option_software_release"
-            android:summary="@string/summary_software_update"
-            android:title="@string/title_software_update"
-            app:iconSpaceReserved="false" />
 
-        <com.limelight.preferences.WebLauncherPreference
-            url="@string/obtainium_app_url"
-            android:key="option_follow_update"
-            android:summary="@string/summary_follow_update"
-            android:title="@string/title_follow_update"
-            app:iconSpaceReserved="false" />
     </PreferenceCategory>
 </PreferenceScreen>

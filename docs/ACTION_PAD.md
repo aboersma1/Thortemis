@@ -28,7 +28,8 @@ All in `app/src/main/java/com/limelight/ui/`. "Pure" means plain Java with no An
 | `PadConfig` | 191 | Pure | The player's changes (key, name, colour, hidden, order), saved and loaded as text |
 | `PadInput` | 270 | Pure | Press logic: modifiers, combos, chat macros, mouse buttons, hold, scroll, release-all |
 | `ActionPadTheme` | 91 | Pure | The 15 colour themes |
-| `ActionPadSettings` | 131 | Android prefs | Reads every setting once; saves config and 3 profiles |
+| `ActionPadSettings` | 170 | Android prefs | Reads every setting once; saves config and 3 profiles, and cycles through them |
+| `WhatsNew` | 40 | Android UI | The "What's new" dialog, shown once per version and from Settings |
 | `PadKit` | 231 | Android UI | Shared factory for buttons, colours and sizes; refresh callbacks |
 | `ExternalActionPadView` | 343 | Android UI | Main view: tabs, pages, extras panel, chat flow, rebuild |
 | `PadTouchpad` | 206 | Android UI | Mouse tab: touchpad, Left/Hold/Right, scroll strip |
@@ -40,7 +41,7 @@ All in `app/src/main/java/com/limelight/ui/`. "Pure" means plain Java with no An
 
 Outside that folder:
 
-- `Game.java`: shows and hides the presentation with the stream.
+- `Game.java`: shows the presentation once the stream is connected and hides it when the stream ends.
 - `utils/ExternalDisplayControlActivity.java`: hosts the same view as a screen.
 - `preferences/PreferenceConfiguration.java`: the `enableActionPad` switch.
 - `res/xml/preferences.xml`, `res/values/strings.xml`, `res/values/action_pad_arrays.xml`: settings screen, text and option lists.
@@ -74,7 +75,7 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 
 ## Tests
 
-44 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
+49 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
@@ -82,6 +83,8 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 | `PadConfigTest` | 13 | Set, move, hide, reset, and save/load including bad input |
 | `ActionPadKeyMapTest` | 15 | Layout data is consistent: unique ids, valid key codes, picker list |
 | `ActionPadThemeTest` | 6 | Theme list matches the settings arrays; text is readable on each theme |
+| `ActionPadSettingsTest` | 3 | Which profile the Profile button loads next |
+| `WhatsNewTest` | 2 | When the notes show |
 
 ```
 ./gradlew testNonRoot_gameDebugUnitTest --tests 'com.limelight.ui.ActionPad*' --tests 'com.limelight.ui.Pad*'
@@ -96,6 +99,14 @@ Not covered: every Android view (`ExternalActionPadView`, `PadTouchpad`, `PadEdi
 - **No format version in saved config.** A future format change needs a migration plan.
 - **Renaming a default button label orphans saved changes.**
 - **Settings changes apply on the next stream**, not live.
-- **Debug builds only.** A release needs a signed build and a decision on app name, icon and package id so it does not clash with Artemis.
+- **Release build is untested on a device.** It is signed with a private key kept outside the repo (see Releasing below) and shrunk with R8, which can strip code that only reflection uses.
+- **Icon.** The launcher icon is still Artemis's.
+- **Update links removed.** The Settings entries that linked to ClassicOldSong's releases are gone; add your own repo's links once it exists.
 - **Licence.** Artemis and Moonlight are GPL-licensed; a public release must stay open source under a compatible licence with notices kept. Check this before publishing.
 - **Style.** Mixed lambda and anonymous-class handlers and a few long methods in `PadEditor` and `ExternalActionPadView` are the likeliest review comments.
+
+## Releasing
+
+- The app id is `com.thortemis` (`com.thortemis.root` for the root flavor), so it installs beside Moonlight and Artemis.
+- Bump `versionName` and `versionCode` in `app/build.gradle`, and update `whats_new_body` in `strings.xml` so the notes show on update.
+- The keystore is never committed (`*.keystore` is git-ignored). Set `THORTEMIS_KEYSTORE`, `THORTEMIS_KEYSTORE_PASSWORD`, `THORTEMIS_KEY_ALIAS` and `THORTEMIS_KEY_PASSWORD`, then run `./gradlew assembleNonRoot_gameRelease`. Losing the key means users cannot update in place, so back it up.
