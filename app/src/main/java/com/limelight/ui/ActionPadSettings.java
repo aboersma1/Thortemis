@@ -34,14 +34,16 @@ public final class ActionPadSettings {
     private static final String KEY_ACTIVE_PROFILE = "action_pad_active_profile";
 
     public static final int PROFILE_SLOTS = 3;
+    /** The idle times the player can pick, in seconds; 0 means never dim. Matches action_pad_dim_values. */
+    public static final int[] DIM_SECONDS = {3, 5, 10, 20, 60, 0};
     /** The F-keys page is hidden unless the player turns it on. */
     private static final String HIDDEN_BY_DEFAULT = "fkeys";
 
     /** Ids of the tabs to show. Never empty. */
     public final Set<String> shownTabs;
-    public final ActionPadTheme theme;
+    public ActionPadTheme theme;
     /** Idle time before the pad dims, or 0 for never. */
-    public final long dimMs;
+    public long dimMs;
     /** Interface, Target, Utility and the other key pages at once, instead of one tab each. */
     public final boolean sideBySide;
     public final boolean swapSides;
@@ -109,6 +111,16 @@ public final class ActionPadSettings {
     }
 
     // --- Changes and profiles ---
+
+    public void saveTheme(ActionPadTheme chosen) {
+        theme = chosen;
+        prefs.edit().putString(KEY_THEME, chosen.id).apply();
+    }
+
+    public void saveDimSeconds(int seconds) {
+        dimMs = seconds * 1000L;
+        prefs.edit().putString(KEY_DIM, String.valueOf(seconds)).apply();
+    }
 
     public void saveConfig() {
         prefs.edit().putString(KEY_CONFIG, config.serialize()).apply();

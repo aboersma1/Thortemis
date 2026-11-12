@@ -14,7 +14,7 @@ final class PadDimmer {
     private static final float DIM_ALPHA = 0.18f;
 
     private final View view;
-    private final long idleMs;
+    private long idleMs;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean enabled = true;
     private boolean dimmed = false;
@@ -38,6 +38,13 @@ final class PadDimmer {
     PadDimmer(View view, long idleMs) {
         this.view = view;
         this.idleMs = idleMs;
+    }
+
+    /** Changes how long the view is left alone before it dims, and restarts the countdown. */
+    void setIdleMs(long idleMs) {
+        if (idleMs == this.idleMs) return;
+        this.idleMs = idleMs;
+        start();
     }
 
     /** Off when the host screen already dims itself. */

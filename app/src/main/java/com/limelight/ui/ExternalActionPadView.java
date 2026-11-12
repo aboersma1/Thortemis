@@ -106,8 +106,6 @@ public class ExternalActionPadView extends FrameLayout {
         // Swallow touches in the gaps, so they do not move the host's mouse.
         setClickable(true);
         setMotionEventSplittingEnabled(true);
-        setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{settings.theme.bgTop, settings.theme.bg}));
         int pad = kit.dp(8);
         setPadding(pad, pad, pad, pad);
 
@@ -135,6 +133,11 @@ public class ExternalActionPadView extends FrameLayout {
 
     /** Builds everything again, after the player changed a button. Keeps the current tab. */
     private void rebuild() {
+        // The editor may have changed the theme or the fade time.
+        kit.applyTheme();
+        setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{settings.theme.bgTop, settings.theme.bg}));
+        dimmer.setIdleMs(settings.dimMs);
         kit.forget();
         input.releaseKeys();
         input.releaseMouse();

@@ -28,7 +28,7 @@ final class PadKit {
 
     final Context context;
     final ActionPadSettings settings;
-    final ActionPadTheme theme;
+    ActionPadTheme theme;
     final PadInput input;
     private final float density;
     private final List<Runnable> refreshers = new ArrayList<>();
@@ -40,6 +40,11 @@ final class PadKit {
         this.input = input;
         this.density = context.getResources().getDisplayMetrics().density;
         input.onChanged = this::refresh;
+    }
+
+    /** Picks up a theme the player just changed; buttons built afterwards use it. */
+    void applyTheme() {
+        theme = settings.theme;
     }
 
     // --- Sizes and shapes ---

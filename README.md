@@ -26,10 +26,10 @@ Thortemis is a fork of Artemis that adds an **action pad** for two-screen handhe
 - **Keyboard tab:** a full on-screen keyboard.
 - **Extra buttons:** an optional panel of up to 10 more keys (F8 to F12, then Shift plus F8 to F12).
 - **Customize:** change any button's key, name and outline colour, hide buttons, reorder them, and save up to three profiles. Reset one button or everything.
-- **Looks:** 15 themes (Alliance Blue default, Classic, TBC, Wrath, Cata, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight, TWW, Midnight, OLED Black, Cyberpunk).
+- **Looks:** change theme and fade time from the Edit screen, even mid-stream. 15 themes (Alliance Blue default, Classic, TBC, Wrath, Cata, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight, TWW, Midnight, OLED Black, Cyberpunk).
 - **Layout options:** show pages side by side, swap sides, put the tab bar at the bottom, change text size.
 - **Profiles:** save up to three layouts (for example one per character or spec) and swap between them with the Profile button in the tab bar.
-- **Comfort:** the pad appears once the stream has started, dims when idle (off, 5, 10 or 30 seconds; 10 by default) and can vibrate on press (a setting, on by default).
+- **Comfort:** the pad appears once the stream has started, dims when idle (3, 5, 10, 20 or 60 seconds, or never; 10 by default) and can vibrate on press (a setting, on by default).
 - **What's new:** a short notes screen shows once after each update, and again from Settings, What's new.
 
 ## Using it

@@ -34,7 +34,7 @@ All in `app/src/main/java/com/limelight/ui/`. "Pure" means plain Java with no An
 | `ExternalActionPadView` | 343 | Android UI | Main view: tabs, pages, extras panel, chat flow, rebuild |
 | `PadTouchpad` | 206 | Android UI | Mouse tab: touchpad, Left/Hold/Right, scroll strip |
 | `PadKeyboard` | 106 | Android UI | Keyboard tab and the typing capture used for rename and chat |
-| `PadEditor` | 302 | Android UI | Customize screen: remap, rename, recolour, hide, reorder, profiles |
+| `PadEditor` | 330 | Android UI | Customize screen: remap, rename, recolour, hide, reorder, profiles, theme, fade time |
 | `PadDimmer` | 77 | Android UI | Fades the pad after idle time |
 | `ActionPadPresentation` | 41 | Android UI | The window on the secondary display |
 | `ConnectionKeySink` | 54 | Glue | Sends pad events through `NvConnection` |
@@ -68,14 +68,14 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 - **One sink interface.** The pad never touches `NvConnection` directly. Tests, the editor (which uses a silent input) and both host screens plug in through `KeySink`.
 - **Stable button ids.** Remaps are stored against a button's default label, not its position, so reordering or hiding never breaks a saved change. Cost: renaming a default label in code orphans saved changes.
 - **Defaults are never edited.** `PadConfig` is a list of overrides, so "reset button" just deletes an override.
-- **Settings read once.** `ActionPadSettings.load` snapshots every preference when the view is created. Changes in the settings screen apply the next time the pad is created; the editor calls `rebuild()` for its own changes.
+- **Settings read once.** `ActionPadSettings.load` snapshots every preference when the view is created. Changes in the settings screen apply the next time the pad is created. The editor can change the theme and fade time live: it saves them, then `rebuild()` re-applies both.
 - **Plain preferences, text-serialised config.** No database or JSON library; the format is hand-rolled (tab-separated lines).
 - **minSdk 21, Java 11.** Main code avoids newer APIs such as `Map.getOrDefault`.
 - **Shared presses are counted.** Mouse buttons use hold counts, so tapping Left while Hold is on does not release the held button.
 
 ## Tests
 
-49 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
+50 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
@@ -83,7 +83,7 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 | `PadConfigTest` | 13 | Set, move, hide, reset, and save/load including bad input |
 | `ActionPadKeyMapTest` | 15 | Layout data is consistent: unique ids, valid key codes, picker list |
 | `ActionPadThemeTest` | 6 | Theme list matches the settings arrays; text is readable on each theme |
-| `ActionPadSettingsTest` | 3 | Which profile the Profile button loads next |
+| `ActionPadSettingsTest` | 4 | Which profile the Profile button loads next; fade choices match the settings screen |
 | `WhatsNewTest` | 2 | When the notes show |
 
 ```

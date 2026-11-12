@@ -81,6 +81,29 @@ final class PadEditor extends LinearLayout {
             }
             list.addView(chipRows(chips, 4));
         }
+        list.addView(heading("Theme"));
+        List<View> themes = new ArrayList<>();
+        for (final ActionPadTheme theme : ActionPadTheme.ALL) {
+            themes.add(choice(theme.name, theme == kit.settings.theme, () -> {
+                kit.settings.saveTheme(theme);
+                kit.applyTheme();
+                setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{kit.theme.bgTop, kit.theme.bg}));
+                onChanged.run();
+                showMain();
+            }));
+        }
+        list.addView(chipRows(themes, 3));
+        list.addView(heading("Fade the pad after"));
+        List<View> fades = new ArrayList<>();
+        for (final int seconds : ActionPadSettings.DIM_SECONDS) {
+            boolean selected = kit.settings.dimMs == seconds * 1000L;
+            fades.add(choice(seconds == 0 ? "Never" : seconds + " s", selected, () -> {
+                kit.settings.saveDimSeconds(seconds);
+                onChanged.run();
+                showMain();
+            }));
+        }
+        list.addView(chipRows(fades, 3));
         list.addView(heading("Profiles"));
         for (int i = 1; i <= ActionPadSettings.PROFILE_SLOTS; i++) list.addView(profileRow(i));
         list.addView(heading("Reset"));
@@ -284,6 +307,14 @@ final class PadEditor extends LinearLayout {
         StringBuilder sb = new StringBuilder();
         for (int mod : slot.mods) sb.append(ActionPadKeyMap.modifierLabel(mod)).append('+');
         return sb.append(ActionPadKeyMap.labelFor(slot.vk)).toString();
+    }
+
+    /** One option of a set: highlighted when it is the current one. */
+    private TextView choice(String label, boolean selected, Runnable pick) {
+        TextView chip = kit.tapButton(label, 13, pick);
+        if (selected) chip.setBackground(kit.rect(kit.theme.accent, kit.theme.accent));
+        if (selected) chip.setTextColor(kit.theme.bg);
+        return chip;
     }
 
     private void changed() {
