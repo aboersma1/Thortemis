@@ -41,6 +41,8 @@ final class PadEditor extends LinearLayout {
     private final Runnable onClose;
     private final List<Group> groups = new ArrayList<>();
     private boolean confirmReset;
+    /** The scrolling list of the screen on show, so a change can redraw it without jumping back to the top. */
+    private ScrollView scrolling;
 
     PadEditor(PadKit kit, Runnable onChanged, Runnable onClose) {
         super(kit.context);
@@ -67,6 +69,14 @@ final class PadEditor extends LinearLayout {
 
     // --- Screens ---
 
+    /** Redraws the main screen at the same scroll position. */
+    private void showMainInPlace() {
+        int y = scrolling == null ? 0 : scrolling.getScrollY();
+        showMain();
+        final ScrollView list = scrolling;
+        if (list != null) list.post(() -> list.scrollTo(0, y));
+    }
+
     private void showMain() {
         confirmReset = false;
         LinearLayout list = screen("Customize buttons", "Close", onClose, true);
@@ -89,7 +99,7 @@ final class PadEditor extends LinearLayout {
                 kit.applyTheme();
                 setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{kit.theme.bgTop, kit.theme.bg}));
                 onChanged.run();
-                showMain();
+                showMainInPlace();
             }));
         }
         list.addView(chipRows(themes, 3));
@@ -100,7 +110,7 @@ final class PadEditor extends LinearLayout {
             fades.add(choice(seconds == 0 ? "Never" : seconds + " s", selected, () -> {
                 kit.settings.saveDimSeconds(seconds);
                 onChanged.run();
-                showMain();
+                showMainInPlace();
             }));
         }
         list.addView(chipRows(fades, 3));
@@ -257,10 +267,11 @@ final class PadEditor extends LinearLayout {
         content.setOrientation(VERTICAL);
         content.setMotionEventSplittingEnabled(true);
         if (scroll) {
-            ScrollView scrollView = new ScrollView(getContext());
-            scrollView.addView(content);
-            addView(scrollView, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
+            scrolling = new ScrollView(getContext());
+            scrolling.addView(content);
+            addView(scrolling, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
         } else {
+            scrolling = null;
             addView(content, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
         }
         return content;
