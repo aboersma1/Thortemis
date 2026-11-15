@@ -114,6 +114,17 @@ final class PadEditor extends LinearLayout {
             }));
         }
         list.addView(chipRows(fades, 3));
+        list.addView(heading("Keyboard layout"));
+        List<View> layouts = new ArrayList<>();
+        for (int i = 0; i < PadKeyboardLayouts.IDS.length; i++) {
+            final String id = PadKeyboardLayouts.IDS[i];
+            layouts.add(choice(PadKeyboardLayouts.NAMES[i], PadKeyboardLayouts.NAMES[i].equals(PadKeyboardLayouts.name(kit.settings.keyboardLayout)), () -> {
+                kit.settings.saveKeyboardLayout(id);
+                onChanged.run();
+                showMainInPlace();
+            }));
+        }
+        list.addView(chipRows(layouts, 3));
         list.addView(heading("Profiles"));
         for (int i = 1; i <= ActionPadSettings.PROFILE_SLOTS; i++) list.addView(profileRow(i));
         list.addView(heading("Reset"));

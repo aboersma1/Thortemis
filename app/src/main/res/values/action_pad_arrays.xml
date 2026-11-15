@@ -104,6 +104,17 @@
         <item>32</item>
     </string-array>
 
+    <string-array name="action_pad_keyboard_names">
+        <item>Classic</item>
+        <item>Square grid</item>
+        <item>Two layers</item>
+    </string-array>
+    <string-array name="action_pad_keyboard_values">
+        <item>classic</item>
+        <item>grid</item>
+        <item>layers</item>
+    </string-array>
+
     <string-array name="action_pad_scroll_speed_values">
         <item>1</item>
         <item>2</item>

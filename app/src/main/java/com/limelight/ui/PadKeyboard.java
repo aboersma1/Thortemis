@@ -1,5 +1,6 @@
 package com.limelight.ui;
 
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -33,63 +34,71 @@ final class PadKeyboard extends LinearLayout {
         setOrientation(VERTICAL);
         setMotionEventSplittingEnabled(true);
 
-        LinearLayout digits = typingRow(0);
-        digits.addView(special("Bksp", ActionPadKeyMap.VK_BACK, null, () -> capture.onBackspace()), kit.weighted(digits, 1.6f));
-        addView(digits, kit.weighted(this, 1f));
-
-        addView(typingRow(1), kit.weighted(this, 1f));
-
-        LinearLayout home = typingRow(2);
-        home.addView(special("Enter", ActionPadKeyMap.VK_RETURN, onSubmit, () -> capture.onDone()), kit.weighted(home, 1.8f));
-        addView(home, kit.weighted(this, 1f));
-
-        LinearLayout bottomLetters = kit.box(HORIZONTAL);
-        bottomLetters.addView(shiftKey(), kit.weighted(bottomLetters, 1.6f));
-        addTypingKeys(bottomLetters, 3);
-        addView(bottomLetters, kit.weighted(this, 1f));
-
-        LinearLayout last = kit.box(HORIZONTAL);
-        if (capture == null) {
-            last.addView(special("Esc", ActionPadKeyMap.VK_ESCAPE, onSubmit, null), kit.weighted(last, 1f));
-            last.addView(special("Tab", ActionPadKeyMap.VK_TAB, null, null), kit.weighted(last, 1f));
-            last.addView(kit.modifierButton(ActionPadKeyMap.VK_LCONTROL), kit.weighted(last, 1f));
-            last.addView(kit.modifierButton(ActionPadKeyMap.VK_LMENU), kit.weighted(last, 1f));
+        // Renaming a button always uses the classic layout, without the keys that only make sense in the game.
+        String[][] layers = PadKeyboardLayouts.layers(capture == null ? kit.settings.keyboardLayout : PadKeyboardLayouts.CLASSIC);
+        for (String[] rows : layers) {
+            LinearLayout layer = kit.box(VERTICAL);
+            for (String row : rows) layer.addView(buildRow(row), kit.weighted(layer, 1f));
+            layerViews.add(layer);
+            addView(layer, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
         }
-        last.addView(special("Space", ActionPadKeyMap.VK_SPACE, null, () -> capture.onChar(" ")), kit.weighted(last, capture == null ? 3f : 8f));
-        if (capture == null) {
-            String[] arrows = {"←", "↑", "↓", "→"};
-            int[] codes = {0x25, 0x26, 0x28, 0x27};
-            for (int i = 0; i < arrows.length; i++) {
-                last.addView(special(arrows[i], codes[i], null, null), kit.weighted(last, 0.8f));
-            }
+        showLayer(0);
+    }
+
+    private final java.util.List<LinearLayout> layerViews = new java.util.ArrayList<>();
+
+    private void showLayer(int index) {
+        for (int i = 0; i < layerViews.size(); i++) layerViews.get(i).setVisibility(i == index ? VISIBLE : GONE);
+    }
+
+    private LinearLayout buildRow(String row) {
+        LinearLayout out = kit.box(HORIZONTAL);
+        for (String token : row.split(" ")) {
+            View key = buildKey(PadKeyboardLayouts.keyName(token));
+            if (key != null) out.addView(key, kit.weighted(out, PadKeyboardLayouts.weight(token)));
         }
-        addView(last, kit.weighted(this, 1f));
+        return out;
+    }
+
+    /** The key for a layout token, or null when it has no use here (while renaming only typing keys remain). */
+    private View buildKey(String name) {
+        if (name.equals("_")) return new View(kit.context);
+        if (name.equals(PadKeyboardLayouts.SYMBOLS_KEY)) return kit.tapButton(name, 14, () -> showLayer(1));
+        if (name.equals(PadKeyboardLayouts.LETTERS_KEY)) return kit.tapButton(name, 14, () -> showLayer(0));
+        if (name.equals("Shift")) return shiftKey();
+        boolean named = PadKeyboardLayouts.namedKeyVk(name) >= 0;
+        if (!named && name.length() == 1) return typingKey(name.charAt(0));
+        if (capture != null && !name.equals("Bksp") && !name.equals("Enter") && !name.equals("Space")) return null;
+        if (name.equals("Ctrl")) return kit.modifierButton(ActionPadKeyMap.VK_LCONTROL);
+        if (name.equals("Alt")) return kit.modifierButton(ActionPadKeyMap.VK_LMENU);
+        switch (name) {
+            case "Bksp": return special(name, null, () -> capture.onBackspace());
+            case "Enter": return special(name, onSubmit, () -> capture.onDone());
+            case "Esc": return special(name, onSubmit, null);
+            case "Space": return special(name, null, () -> capture.onChar(" "));
+            default: return special(name, null, null);
+        }
     }
 
     private boolean shifted() {
         return capture == null ? kit.input.isArmed(SHIFT) : captureShift;
     }
 
-    private LinearLayout typingRow(int index) {
-        LinearLayout row = kit.box(HORIZONTAL);
-        addTypingKeys(row, index);
-        return row;
-    }
-
-    private void addTypingKeys(LinearLayout row, int index) {
-        for (String pair : ActionPadKeyMap.TYPING_ROWS[index]) {
-            final String plain = pair.substring(0, 1), upper = pair.substring(1);
-            ActionPadKeyMap.Slot slot = ActionPadKeyMap.key(plain, ActionPadKeyMap.vkOf(plain.charAt(0)));
-            final TextView key = capture == null
-                    ? kit.keyButton(slot, plain, 15, false, null)
-                    : kit.tapButton(plain, 15, () -> capture.onChar(shifted() ? upper : plain));
-            kit.addRefresher(() -> key.setText(shifted() ? upper : plain));
-            row.addView(key, kit.weighted(row, 1f));
-        }
+    /** A letter, digit or punctuation key; it shows its shifted character while Shift is armed. */
+    private TextView typingKey(char c) {
+        String pair = ActionPadKeyMap.typingPair(c);
+        final String plain = pair.substring(0, 1), upper = pair.substring(1);
+        ActionPadKeyMap.Slot slot = ActionPadKeyMap.key(plain, ActionPadKeyMap.vkOf(c));
+        final TextView key = capture == null
+                ? kit.keyButton(slot, plain, 15, false, null)
+                : kit.tapButton(plain, 15, () -> capture.onChar(shifted() ? upper : plain));
+        kit.addRefresher(() -> key.setText(shifted() ? upper : plain));
+        return key;
     }
 
     /** A non-typing key: sends {@code vk} to the host, or runs {@code onCapture} while renaming (no key if that is null). */
-    private TextView special(String label, int vk, Runnable afterRelease, Runnable onCapture) {
+    private TextView special(String label, Runnable afterRelease, Runnable onCapture) {
+        int vk = PadKeyboardLayouts.namedKeyVk(label);
         if (capture == null) return kit.keyButton(ActionPadKeyMap.key(label, vk), label, 14, false, afterRelease);
         return kit.tapButton(label, 14, onCapture);
     }

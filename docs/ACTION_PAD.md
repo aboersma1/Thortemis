@@ -33,8 +33,9 @@ All in `app/src/main/java/com/limelight/ui/`. "Pure" means plain Java with no An
 | `PadKit` | 231 | Android UI | Shared factory for buttons, colours and sizes; refresh callbacks |
 | `ExternalActionPadView` | 343 | Android UI | Main view: tabs, pages, extras panel, chat flow, rebuild |
 | `PadTouchpad` | 206 | Android UI | Mouse tab: touchpad, Left/Hold/Right, scroll strip |
-| `PadKeyboard` | 106 | Android UI | Keyboard tab and the typing capture used for rename and chat |
-| `PadEditor` | 330 | Android UI | Customize screen: remap, rename, recolour, hide, reorder, profiles, theme, fade time |
+| `PadKeyboard` | 130 | Android UI | Keyboard tab and the typing capture used for rename and chat; builds whichever layout is chosen |
+| `PadKeyboardLayouts` | 95 | Pure | The three keyboard layouts as text rows, and which key code each named key sends |
+| `PadEditor` | 330 | Android UI | Customize screen: remap, rename, recolour, hide, reorder, profiles, theme, fade time, keyboard layout |
 | `PadDimmer` | 77 | Android UI | Fades the pad after idle time |
 | `ActionPadPresentation` | 41 | Android UI | The window on the secondary display |
 | `ConnectionKeySink` | 54 | Glue | Sends pad events through `NvConnection` |
@@ -75,7 +76,7 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 
 ## Tests
 
-50 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
+56 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
@@ -85,6 +86,7 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 | `ActionPadThemeTest` | 6 | Theme list matches the settings arrays; text is readable on each theme |
 | `ActionPadSettingsTest` | 4 | Which profile the Profile button loads next; fade choices match the settings screen |
 | `WhatsNewTest` | 2 | When the notes show |
+| `PadKeyboardLayoutsTest` | 6 | Every key in every layout is known, rows fill the width, nothing is unreachable |
 
 ```
 ./gradlew testNonRoot_gameDebugUnitTest --tests 'com.limelight.ui.ActionPad*' --tests 'com.limelight.ui.Pad*'

@@ -23,6 +23,7 @@ public final class ActionPadSettings {
     private static final String KEY_LABEL_SIZE = "list_action_pad_label_size";
     private static final String KEY_TOUCH_SPEED = "list_action_pad_touch_speed";
     private static final String KEY_TAP_CLICK = "checkbox_action_pad_tap_click";
+    private static final String KEY_KEYBOARD = "list_action_pad_keyboard_layout";
     private static final String KEY_SCROLL = "checkbox_action_pad_scroll";
     private static final String KEY_SCROLL_LEFT = "checkbox_action_pad_scroll_left";
     private static final String KEY_SCROLL_INVERT = "checkbox_action_pad_scroll_invert";
@@ -55,6 +56,8 @@ public final class ActionPadSettings {
     public final float touchSpeed;
     public final boolean tapToClick;
     /** The scroll strip beside the touchpad, which side it is on, and which way a downward drag scrolls. */
+    /** The id of the keyboard tab's layout, see {@link PadKeyboardLayouts}. */
+    public String keyboardLayout;
     public final boolean scrollStrip;
     public final boolean scrollLeft;
     public final boolean scrollInvert;
@@ -82,6 +85,7 @@ public final class ActionPadSettings {
         labelScale = number(p, KEY_LABEL_SIZE, 100) / 100f;
         touchSpeed = number(p, KEY_TOUCH_SPEED, 22) / 10f;
         tapToClick = p.getBoolean(KEY_TAP_CLICK, true);
+        keyboardLayout = p.getString(KEY_KEYBOARD, PadKeyboardLayouts.DEFAULT);
         scrollStrip = p.getBoolean(KEY_SCROLL, true);
         scrollLeft = p.getBoolean(KEY_SCROLL_LEFT, false);
         scrollInvert = p.getBoolean(KEY_SCROLL_INVERT, false);
@@ -115,6 +119,11 @@ public final class ActionPadSettings {
     public void saveTheme(ActionPadTheme chosen) {
         theme = chosen;
         prefs.edit().putString(KEY_THEME, chosen.id).apply();
+    }
+
+    public void saveKeyboardLayout(String id) {
+        keyboardLayout = id;
+        prefs.edit().putString(KEY_KEYBOARD, id).apply();
     }
 
     public void saveDimSeconds(int seconds) {

@@ -321,6 +321,14 @@ public final class ActionPadKeyMap {
         }
     }
 
+    /** The "plain" + "shifted" pair for a typing key, such as "1!" for '1'. */
+    public static String typingPair(char plain) {
+        for (String[] row : TYPING_ROWS) {
+            for (String pair : row) if (pair.charAt(0) == plain) return pair;
+        }
+        throw new IllegalArgumentException("No typing key " + plain);
+    }
+
     /** Each typing key as "plain" + "shifted" characters; the keyboard shows the shifted one while Shift is armed. */
     public static final String[][] TYPING_ROWS = {
             {"1!", "2@", "3#", "4$", "5%", "6^", "7&", "8*", "9(", "0)", "-_", "=+"},

@@ -23,7 +23,7 @@ Thortemis is a fork of Artemis that adds an **action pad** for two-screen handhe
 - **Chat tab:** open chat or a slash command with the on-screen keyboard, and one-tap macros (Sit, Dance, Follow, Assist, Dismount).
 - **Modifiers:** Shift, Ctrl and Alt can be tapped once for the next key or locked on, and combined with any button.
 - **Mouse tab:** touchpad with tap-to-click, two-finger right-click, Left/Hold/Right buttons and a scroll strip.
-- **Keyboard tab:** a full on-screen keyboard.
+- **Keyboard tab:** an on-screen keyboard with three layouts you can switch between from Edit: Two layers (the default, big keys with a `#+=` key for symbols and arrows), Square grid (everything on one layer) and Classic.
 - **Extra buttons:** an optional panel of up to 10 more keys (F8 to F12, then Shift plus F8 to F12).
 - **Customize:** change any button's key, name and outline colour, hide buttons, reorder them, and save up to three profiles. Reset one button or everything.
 - **Looks:** change theme and fade time from the Edit screen, even mid-stream. 15 themes (Alliance Blue default, Classic, TBC, Wrath, Cata, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight, TWW, Midnight, OLED Black, Cyberpunk).

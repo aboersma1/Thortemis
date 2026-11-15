@@ -301,6 +301,15 @@
             android:title="@string/title_action_pad_tap_click"
             app:iconSpaceReserved="false" />
 
+        <ListPreference
+            android:defaultValue="layers"
+            android:entries="@array/action_pad_keyboard_names"
+            android:entryValues="@array/action_pad_keyboard_values"
+            android:key="list_action_pad_keyboard_layout"
+            android:title="@string/title_action_pad_keyboard"
+            app:iconSpaceReserved="false"
+            app:useSimpleSummaryProvider="true" />
+
         <CheckBoxPreference
             android:defaultValue="true"
             android:key="checkbox_action_pad_scroll"
