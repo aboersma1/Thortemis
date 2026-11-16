@@ -96,6 +96,11 @@ public class PadInputTest {
         return slot(ActionPadKeyMap.NUMBERS, id);
     }
 
+    private static java.util.List<Slot> repliesSlots() {
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) if (page.id.equals("replies")) return page.slots;
+        throw new AssertionError("no replies page");
+    }
+
     private Slot page(String id) {
         for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
             for (Slot s : page.slots) if (s.id.equals(id)) return s;
@@ -154,6 +159,21 @@ public class PadInputTest {
         later.runAll();
         assertEquals(Arrays.asList("+0D/0", "-0D/0", "+BF/0", "-BF/0", "+53/0", "-53/0", "+49/0", "-49/0",
                 "+54/0", "-54/0", "+0D/0", "-0D/0"), host.events);
+    }
+
+    @Test
+    public void chatMacroHoldsShiftAroundCapitalsAndPunctuation() {
+        PadConfig config = new PadConfig();
+        config.setMacro("Thanks", "Hi!");
+        Slot thanks = config.resolve("replies", repliesSlots(), false).get(0);
+        input.press(thanks);
+        host.events.clear();
+        later.runAll();
+        assertEquals(Arrays.asList("+0D/0", "-0D/0",
+                "+A0/0", "+48/1", "-48/1", "-A0/0",
+                "+49/0", "-49/0",
+                "+A0/0", "+31/1", "-31/1", "-A0/0",
+                "+0D/0", "-0D/0"), host.events);
     }
 
     @Test

@@ -102,7 +102,6 @@ public class ExternalActionPadView extends FrameLayout {
         });
         editor = new PadEditor(new PadKit(context, settings, silent), this::rebuild, this::closeEditor);
 
-        buildTabs();
         // Swallow touches in the gaps, so they do not move the host's mouse.
         setClickable(true);
         setMotionEventSplittingEnabled(true);
@@ -143,6 +142,13 @@ public class ExternalActionPadView extends FrameLayout {
         input.releaseMouse();
         content.removeAllViews();
         tabViews.clear();
+        // The editor may have turned tabs on or off. Stay on the same tab if it is still there.
+        String current = tabs.isEmpty() ? null : tabKey(tabs.get(Math.min(tabIndex, tabs.size() - 1)));
+        tabs.clear();
+        buildTabs();
+        tabIndex = Math.min(tabIndex, Math.max(0, tabs.size() - 1));
+        for (int i = 0; i < tabs.size(); i++) if (tabKey(tabs.get(i)).equals(current)) tabIndex = i;
+        if (chatReturnTab >= tabs.size()) chatReturnTab = -1;
 
         pageHost = kit.box(LinearLayout.HORIZONTAL);
         rightColumn = kit.box(LinearLayout.VERTICAL);
@@ -164,6 +170,11 @@ public class ExternalActionPadView extends FrameLayout {
         }
 
         showTab(tabIndex);
+    }
+
+    /** Identifies a tab across a rebuild: its kind and, for key pages, the first page. */
+    private static String tabKey(Tab tab) {
+        return tab.kind + ":" + (tab.pages.isEmpty() ? "" : tab.pages.get(0).id);
     }
 
     private LinearLayout buildTabBar() {

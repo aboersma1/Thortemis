@@ -80,6 +80,18 @@ final class PadEditor extends LinearLayout {
     private void showMain() {
         confirmReset = false;
         LinearLayout list = screen("Customize buttons", "Close", onClose, true);
+        list.addView(heading("Tabs"));
+        list.addView(note("Tap a tab to show or hide it. The last one stays on. Open chat needs the Keyboard tab."));
+        List<View> tabChips = new ArrayList<>();
+        for (final String id : ActionPadKeyMap.tabIds()) {
+            tabChips.add(choice(ActionPadKeyMap.tabTitle(id), kit.settings.shownTabs.contains(id), () -> {
+                kit.settings.toggleTab(id);
+                onChanged.run();
+                showMainInPlace();
+            }));
+        }
+        list.addView(chipRows(tabChips, 4));
+        list.addView(heading("Buttons"));
         list.addView(note("Tap a button to change its key, name or colour, or to hide or move it."));
         for (final Group group : groups) {
             list.addView(heading(group.title));
@@ -170,6 +182,12 @@ final class PadEditor extends LinearLayout {
             list.addView(heading("Sends: " + describe(slot)));
             list.addView(modifierChips(group, slot));
             list.addView(keyGrid(group, slot));
+        } else {
+            list.addView(heading("Types: " + slot.macro));
+            List<View> message = new ArrayList<>();
+            message.add(kit.tapButton("Edit message", 14, () -> showMessage(group, slot)));
+            message.add(edit("Default message", group, id, () -> config.setMacro(id, null)));
+            list.addView(chipRows(message, 2));
         }
 
         list.addView(heading("Name"));
@@ -255,6 +273,35 @@ final class PadEditor extends LinearLayout {
             @Override
             public void onDone() {
                 config.setName(slot.id, name.toString());
+                changed();
+                showButton(group, slot.id);
+            }
+        }, null);
+        column.addView(keyboard, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
+    }
+
+    /** Typing a new chat line on the pad's own keyboard. Enter saves it. */
+    private void showMessage(final Group group, final Slot slot) {
+        LinearLayout column = screen("Message for \"" + slot.label + "\"", "Cancel", () -> showButton(group, slot.id), false);
+        final StringBuilder text = new StringBuilder(slot.macro);
+        final TextView preview = kit.text(text + "|", 16);
+        column.addView(preview, new LayoutParams(LayoutParams.MATCH_PARENT, kit.dp(64)));
+        PadKeyboard keyboard = new PadKeyboard(kit, new PadKeyboard.Capture() {
+            @Override
+            public void onChar(String typed) {
+                if (text.length() < ActionPadKeyMap.MAX_MACRO) text.append(typed);
+                preview.setText(text + "|");
+            }
+
+            @Override
+            public void onBackspace() {
+                if (text.length() > 0) text.deleteCharAt(text.length() - 1);
+                preview.setText(text + "|");
+            }
+
+            @Override
+            public void onDone() {
+                config.setMacro(slot.id, text.toString());
                 changed();
                 showButton(group, slot.id);
             }

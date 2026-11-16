@@ -3,7 +3,9 @@ package com.limelight.ui;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Button tables for the action pad: WoW's default key bindings as Windows virtual-key codes (what
@@ -114,6 +116,12 @@ public final class ActionPadKeyMap {
         public Slot with(String label, int vk, int[] mods, int color) {
             return new Slot(id, label, vk, mods, isolated, macro, opensKeyboard, color);
         }
+
+        /** Same, with the player's own chat text in place of the default. Ignored for a button that is not a chat macro. */
+        public Slot with(String label, int vk, int[] mods, int color, String message) {
+            String text = macro != null && message != null && canType(message) ? message : macro;
+            return new Slot(id, label, vk, mods, isolated, text, opensKeyboard, color);
+        }
     }
 
     public static final class Page {
@@ -198,6 +206,20 @@ public final class ActionPadKeyMap {
                     macro("Follow", "/follow"),
                     macro("Assist", "/assist"),
                     macro("Dismount", "/dismount")),
+            // Plain lines for whatever channel the chat box opens in. A "/p " or "/s " in front picks one.
+            new Page(ActionPadKeyMap.REPLIES_TAB_ID, "Replies",
+                    macro("Thanks", "Thanks!"),
+                    macro("On my way", "On my way!"),
+                    macro("Be right back", "BRB, one minute"),
+                    macro("Ready", "Ready when you are"),
+                    macro("Wait for me", "Please wait for me"),
+                    macro("Need heals", "Need heals!"),
+                    macro("Need mana", "Out of mana, need a drink"),
+                    macro("Pull now", "Go ahead and pull"),
+                    macro("Invite me", "Invite please?"),
+                    macro("Sorry", "Sorry about that"),
+                    macro("Good job", "Nice job everyone!"),
+                    macro("No problem", "No problem!")),
             new Page("fkeys", "F-Keys", fKeys())));
 
     private static Slot[] fKeys() {
@@ -231,6 +253,7 @@ public final class ActionPadKeyMap {
     // --- Tabs ---
 
     /** The touchpad and on-screen keyboard tabs, shown after the key pages. */
+    public static final String REPLIES_TAB_ID = "replies";
     public static final String MOUSE_TAB_ID = "mouse";
     public static final String KEYBOARD_TAB_ID = "keyboard";
 
@@ -243,23 +266,68 @@ public final class ActionPadKeyMap {
         return ids;
     }
 
+    /** The name shown for a tab id, in the tab bar and in the editor. */
+    public static String tabTitle(String id) {
+        for (Page page : PAGES) if (page.id.equals(id)) return page.title;
+        if (id.equals(MOUSE_TAB_ID)) return "Mouse";
+        if (id.equals(KEYBOARD_TAB_ID)) return "Keyboard";
+        throw new IllegalArgumentException("No tab " + id);
+    }
+
+    /**
+     * {@code shown} with tab {@code id} turned on or off, in display order. The last tab on cannot be
+     * turned off, so the pad always has something to show.
+     */
+    public static Set<String> toggledTabs(Set<String> shown, String id) {
+        Set<String> out = new LinkedHashSet<>();
+        boolean turnOff = shown.contains(id);
+        if (turnOff && shown.size() <= 1) return new LinkedHashSet<>(shown);
+        for (String tab : tabIds()) {
+            if (tab.equals(id) ? !turnOff : shown.contains(tab)) out.add(tab);
+        }
+        return out;
+    }
+
     // --- Chat macros ---
+
+    /** Longest chat line a button can type. WoW's chat box takes 255; this keeps a line short enough to read on a button. */
+    public static final int MAX_MACRO = 80;
+    /** Set on a macro key code that needs Shift held while it is pressed. */
+    public static final int MACRO_SHIFT = 0x100;
 
     /**
      * The key presses that type {@code text} into WoW's chat box: Enter, each character, Enter.
-     * Supports lower-case letters, digits, space, '/' and '.', which need no Shift on a US layout.
+     * Handles letters in either case, digits, space and the punctuation on the on-screen keyboard (US layout).
+     * A character that needs Shift has {@link #MACRO_SHIFT} added to its key code.
      */
     public static int[] macroKeys(String text) {
         int[] keys = new int[text.length() + 2];
         keys[0] = VK_RETURN;
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            boolean plain = c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == ' ' || c == '/' || c == '.';
-            if (!plain) throw new IllegalArgumentException("Unsupported macro character '" + c + "' in " + text);
-            keys[i + 1] = vkOf(c);
-        }
+        for (int i = 0; i < text.length(); i++) keys[i + 1] = macroCode(text.charAt(i), text);
         keys[keys.length - 1] = VK_RETURN;
         return keys;
+    }
+
+    private static int macroCode(char c, String text) {
+        if (c == ' ') return VK_SPACE;
+        for (String[] row : TYPING_ROWS) {
+            for (String pair : row) {
+                if (pair.charAt(0) == c) return vkOf(c);
+                if (pair.charAt(1) == c) return vkOf(pair.charAt(0)) | MACRO_SHIFT;
+            }
+        }
+        throw new IllegalArgumentException("Unsupported macro character '" + c + "' in " + text);
+    }
+
+    /** Whether {@code text} is a chat line a button can type: every character typeable, and not too long. */
+    public static boolean canType(String text) {
+        if (text == null || text.isEmpty() || text.length() > MAX_MACRO) return false;
+        try {
+            macroKeys(text);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     // --- Keys the player can pick, and the on-screen keyboard ---

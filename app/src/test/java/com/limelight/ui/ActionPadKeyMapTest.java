@@ -127,9 +127,73 @@ public class ActionPadKeyMapTest {
         }
     }
 
+    @Test
+    public void macroTypesCapitalsAndPunctuationWithShift() {
+        int[] keys = ActionPadKeyMap.macroKeys("Hi!");
+        assertEquals(5, keys.length);
+        assertEquals('H' | ActionPadKeyMap.MACRO_SHIFT, keys[1]);
+        assertEquals('I', keys[2]);
+        assertEquals('1' | ActionPadKeyMap.MACRO_SHIFT, keys[3]);
+        assertEquals(0xBC, ActionPadKeyMap.macroKeys(",")[1]);
+        assertEquals(0xBF | ActionPadKeyMap.MACRO_SHIFT, ActionPadKeyMap.macroKeys("?")[1]);
+    }
+
     @Test(expected = IllegalArgumentException.class)
-    public void macroRejectsCharactersThatNeedShift() {
-        ActionPadKeyMap.macroKeys("/Sit");
+    public void macroRejectsCharactersThePadKeyboardCannotType() {
+        ActionPadKeyMap.macroKeys("caf\u00e9");
+    }
+
+    @Test
+    public void canTypeChecksCharactersAndLength() {
+        assertTrue(ActionPadKeyMap.canType("/p Thanks, see you!"));
+        assertTrue(!ActionPadKeyMap.canType(""));
+        assertTrue(!ActionPadKeyMap.canType(null));
+        assertTrue(!ActionPadKeyMap.canType("~"));
+        StringBuilder tooLong = new StringBuilder();
+        for (int i = 0; i <= ActionPadKeyMap.MAX_MACRO; i++) tooLong.append('a');
+        assertTrue(!ActionPadKeyMap.canType(tooLong.toString()));
+        assertTrue(ActionPadKeyMap.canType(tooLong.substring(1)));
+    }
+
+    @Test
+    public void repliesPageIsMacrosAndFitsTheGrid() {
+        ActionPadKeyMap.Page replies = null;
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) if (page.id.equals(ActionPadKeyMap.REPLIES_TAB_ID)) replies = page;
+        assertTrue(replies != null);
+        assertTrue(replies.slots.size() >= 8 && replies.slots.size() <= 12);
+        for (ActionPadKeyMap.Slot slot : replies.slots) assertTrue(slot.label, slot.macro != null && ActionPadKeyMap.canType(slot.macro));
+    }
+
+    @Test
+    public void everyButtonIdIsUniqueAcrossPages() {
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
+            for (ActionPadKeyMap.Slot slot : page.slots) assertTrue(slot.id, seen.add(slot.id));
+        }
+        for (ActionPadKeyMap.Slot slot : ActionPadKeyMap.NUMBERS) assertTrue(slot.id, seen.add(slot.id));
+        for (ActionPadKeyMap.Slot slot : ActionPadKeyMap.EXTRAS) assertTrue(slot.id, seen.add(slot.id));
+    }
+
+    @Test
+    public void everyTabHasATitle() {
+        for (String id : ActionPadKeyMap.tabIds()) assertTrue(id, !ActionPadKeyMap.tabTitle(id).isEmpty());
+        assertEquals("Replies", ActionPadKeyMap.tabTitle("replies"));
+    }
+
+    @Test
+    public void toggledTabsTurnsOneOffOrOnInDisplayOrder() {
+        java.util.Set<String> shown = new java.util.LinkedHashSet<>(ActionPadKeyMap.tabIds());
+        java.util.Set<String> without = ActionPadKeyMap.toggledTabs(shown, "chat");
+        assertTrue(!without.contains("chat") && without.size() == shown.size() - 1);
+        assertEquals(shown, ActionPadKeyMap.toggledTabs(without, "chat"));
+        // Turning a tab on puts it back where it belongs, not at the end.
+        assertEquals(new java.util.ArrayList<>(shown), new java.util.ArrayList<>(ActionPadKeyMap.toggledTabs(without, "chat")));
+    }
+
+    @Test
+    public void theLastTabCannotBeTurnedOff() {
+        java.util.Set<String> one = new java.util.LinkedHashSet<>(java.util.Collections.singleton("mouse"));
+        assertEquals(one, ActionPadKeyMap.toggledTabs(one, "mouse"));
     }
 
     @Test

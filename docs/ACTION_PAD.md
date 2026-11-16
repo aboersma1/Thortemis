@@ -24,18 +24,18 @@ All in `app/src/main/java/com/limelight/ui/`. "Pure" means plain Java with no An
 
 | File | Lines | Kind | Job |
 | --- | --- | --- | --- |
-| `ActionPadKeyMap` | 331 | Pure | Default layout: pages, number row, extras, key picker list, Windows VK constants |
-| `PadConfig` | 191 | Pure | The player's changes (key, name, colour, hidden, order), saved and loaded as text |
-| `PadInput` | 270 | Pure | Press logic: modifiers, combos, chat macros, mouse buttons, hold, scroll, release-all |
+| `ActionPadKeyMap` | 407 | Pure | Default layout: pages (including Replies), number row, extras, key picker list, Windows VK constants, chat macro keys (with Shift), tab on/off rule |
+| `PadConfig` | 202 | Pure | The player's changes (key, name, colour, hidden, order, chat text), saved and loaded as text |
+| `PadInput` | 277 | Pure | Press logic: modifiers, combos, chat macros, mouse buttons, hold, scroll, release-all |
 | `ActionPadTheme` | 91 | Pure | The 15 colour themes |
-| `ActionPadSettings` | 170 | Android prefs | Reads every setting once; saves config and 3 profiles, and cycles through them |
+| `ActionPadSettings` | 200 | Android prefs | Reads every setting once; saves config and 3 profiles, and cycles through them |
 | `WhatsNew` | 40 | Android UI | The "What's new" dialog, shown once per version and from Settings |
 | `PadKit` | 231 | Android UI | Shared factory for buttons, colours and sizes; refresh callbacks |
-| `ExternalActionPadView` | 343 | Android UI | Main view: tabs, pages, extras panel, chat flow, rebuild |
+| `ExternalActionPadView` | 366 | Android UI | Main view: tabs, pages, extras panel, chat flow, rebuild |
 | `PadTouchpad` | 206 | Android UI | Mouse tab: touchpad, Left/Hold/Right, scroll strip |
 | `PadKeyboard` | 130 | Android UI | Keyboard tab and the typing capture used for rename and chat; builds whichever layout is chosen |
 | `PadKeyboardLayouts` | 95 | Pure | The three keyboard layouts as text rows, and which key code each named key sends |
-| `PadEditor` | 330 | Android UI | Customize screen: remap, rename, recolour, hide, reorder, profiles, theme, fade time, keyboard layout |
+| `PadEditor` | 402 | Android UI | Customize screen: tabs on/off, remap, rename, recolour, hide, reorder, chat text, profiles, theme, fade time, keyboard layout |
 | `PadDimmer` | 77 | Android UI | Fades the pad after idle time |
 | `ActionPadPresentation` | 41 | Android UI | The window on the secondary display |
 | `ConnectionKeySink` | 54 | Glue | Sends pad events through `NvConnection` |
@@ -69,22 +69,24 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 - **One sink interface.** The pad never touches `NvConnection` directly. Tests, the editor (which uses a silent input) and both host screens plug in through `KeySink`.
 - **Stable button ids.** Remaps are stored against a button's default label, not its position, so reordering or hiding never breaks a saved change. Cost: renaming a default label in code orphans saved changes.
 - **Defaults are never edited.** `PadConfig` is a list of overrides, so "reset button" just deletes an override.
-- **Settings read once.** `ActionPadSettings.load` snapshots every preference when the view is created. Changes in the settings screen apply the next time the pad is created. The editor can change the theme and fade time live: it saves them, then `rebuild()` re-applies both.
+- **Settings read once.** `ActionPadSettings.load` snapshots every preference when the view is created. Changes in the settings screen apply the next time the pad is created. The editor can change the theme, fade time, keyboard layout and which tabs are on live: it saves them, then `rebuild()` re-applies them (and rebuilds the tab list, staying on the same tab if it is still there).
+- **Tabs on/off share one preference.** The Edit screen's Tabs chips and Settings, Action pad tabs both read and write `multi_action_pad_tabs`. `ActionPadKeyMap.toggledTabs` keeps display order and refuses to turn off the last tab. A saved tab list from before Replies existed gets Replies added once (`action_pad_tabs_version`).
+- **Chat text is an override too.** A Replies or Chat button's text is stored like a rename (an optional eighth field on its `E` line, so lines from 1.0.3 still load). `macroKeys` types letters in either case, digits, space and the on-screen keyboard's punctuation; a character that needs Shift carries `MACRO_SHIFT`, and `PadInput` holds Shift around it. Text a button cannot type is ignored and the default is used.
 - **Plain preferences, text-serialised config.** No database or JSON library; the format is hand-rolled (tab-separated lines).
 - **minSdk 21, Java 11.** Main code avoids newer APIs such as `Map.getOrDefault`.
 - **Shared presses are counted.** Mouse buttons use hold counts, so tapping Left while Hold is on does not release the held button.
 
 ## Tests
 
-56 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
+72 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
-| `PadInputTest` | 10 | Modifiers, combos, macros, mouse hold, and a 300-seed fuzz that checks no key is left stuck |
-| `PadConfigTest` | 13 | Set, move, hide, reset, and save/load including bad input |
-| `ActionPadKeyMapTest` | 15 | Layout data is consistent: unique ids, valid key codes, picker list |
+| `PadInputTest` | 11 | Modifiers, combos, macros (including Shift around capitals), mouse hold, and a 300-seed fuzz that checks no key is left stuck |
+| `PadConfigTest` | 19 | Set, move, hide, reset, and save/load including bad input |
+| `ActionPadKeyMapTest` | 22 | Layout data is consistent: unique ids, valid key codes, picker list |
 | `ActionPadThemeTest` | 6 | Theme list matches the settings arrays; text is readable on each theme |
-| `ActionPadSettingsTest` | 4 | Which profile the Profile button loads next; fade choices match the settings screen |
+| `ActionPadSettingsTest` | 6 | Which profile the Profile button loads next; fade and tab choices match the settings screen |
 | `WhatsNewTest` | 2 | When the notes show |
 | `PadKeyboardLayoutsTest` | 6 | Every key in every layout is known, rows fill the width, nothing is unreachable |
 
@@ -100,7 +102,9 @@ Not covered: every Android view (`ExternalActionPadView`, `PadTouchpad`, `PadEdi
 - **Scroll direction is unconfirmed.** Dragging down should scroll down; the Reverse setting exists in case it feels wrong.
 - **No format version in saved config.** A future format change needs a migration plan.
 - **Renaming a default button label orphans saved changes.**
-- **Settings changes apply on the next stream**, not live.
+- **Settings changes apply on the next stream**, not live, except the ones made in Edit.
+- **Replies go to whatever channel Enter opens.** Nothing checks which channel that is; a line meant for the party can land in /say if the player last used it. Put `/p ` at the start of the text to be sure.
+- **Turning off the Keyboard tab breaks Open chat.** It sends its key but has nowhere to show the keyboard. The editor says so next to the Tabs chips.
 - **Release build is untested on a device.** It is signed with a private key kept outside the repo (see Releasing below) and shrunk with R8, which can strip code that only reflection uses.
 - **Icon.** The launcher icon is still Artemis's.
 - **Update links removed.** The Settings entries that linked to ClassicOldSong's releases are gone; add your own repo's links once it exists.

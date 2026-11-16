@@ -22,9 +22,10 @@ public final class PadConfig {
         int color;        // 0 = the theme's
         boolean hidden;
         String name;      // null = the default label
+        String macro;     // null = the default chat text
 
         boolean isDefault() {
-            return vk == 0 && color == 0 && !hidden && name == null;
+            return vk == 0 && color == 0 && !hidden && name == null && macro == null;
         }
     }
 
@@ -73,6 +74,13 @@ public final class PadConfig {
     public void setName(String id, String name) {
         String clean = name == null ? "" : name.replaceAll("[\\t\\r\\n]", " ").trim();
         edit(id).name = clean.isEmpty() ? null : clean;
+        tidy(id);
+    }
+
+    /** The text a chat button types. Blank, or text a button cannot type, goes back to the default. */
+    public void setMacro(String id, String text) {
+        String clean = text == null ? "" : text.replaceAll("[\\t\\r\\n]", " ").trim();
+        edit(id).macro = ActionPadKeyMap.canType(clean) ? clean : null;
         tidy(id);
     }
 
@@ -135,7 +143,8 @@ public final class PadConfig {
                         e.name != null ? e.name : slot.label,
                         e.vk != 0 ? e.vk : slot.vk,
                         e.vk != 0 ? ActionPadKeyMap.modsFromMask(e.mods) : slot.mods,
-                        e.color));
+                        e.color,
+                        e.macro));
             }
         }
         return out;
@@ -149,7 +158,8 @@ public final class PadConfig {
             Edit e = entry.getValue();
             sb.append("E\t").append(entry.getKey()).append('\t').append(e.vk).append('\t').append(e.mods)
                     .append('\t').append(e.color).append('\t').append(e.hidden ? 1 : 0)
-                    .append('\t').append(e.name == null ? "" : e.name).append('\n');
+                    .append('\t').append(e.name == null ? "" : e.name)
+                    .append('\t').append(e.macro == null ? "" : e.macro).append('\n');
         }
         for (Map.Entry<String, List<String>> entry : order.entrySet()) {
             sb.append("O\t").append(entry.getKey());
@@ -166,7 +176,7 @@ public final class PadConfig {
         for (String line : text.split("\n")) {
             String[] f = line.split("\t", -1);
             try {
-                if (f[0].equals("E") && f.length == 7) {
+                if (f[0].equals("E") && (f.length == 7 || f.length == 8)) {
                     int vk = Integer.parseInt(f[2]);
                     int mods = Integer.parseInt(f[3]);
                     int color = Integer.parseInt(f[4]);
@@ -176,6 +186,7 @@ public final class PadConfig {
                     e.color = color;
                     e.hidden = f[5].equals("1");
                     e.name = f[6].isEmpty() ? null : f[6];
+                    e.macro = f.length == 8 && ActionPadKeyMap.canType(f[7]) ? f[7] : null;
                     config.tidy(f[1]);
                 } else if (f[0].equals("O") && f.length >= 3) {
                     List<String> ids = new ArrayList<>();

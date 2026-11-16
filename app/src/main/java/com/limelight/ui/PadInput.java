@@ -193,11 +193,18 @@ final class PadInput {
     private void runMacro(String text) {
         releaseModifiers();
         long delay = 0;
-        for (int vk : ActionPadKeyMap.macroKeys(text)) {
-            final short key = (short) vk;
+        for (int code : ActionPadKeyMap.macroKeys(text)) {
+            final short key = (short) (code & 0xFF);
+            final boolean shift = (code & ActionPadKeyMap.MACRO_SHIFT) != 0;
             scheduler.post(() -> {
-                sink.sendKey(key, true, (byte) 0);
-                sink.sendKey(key, false, (byte) 0);
+                byte mask = 0;
+                if (shift) {
+                    sink.sendKey((short) ActionPadKeyMap.VK_LSHIFT, true, mask);
+                    mask = ActionPadKeyMap.modifierFlag(ActionPadKeyMap.VK_LSHIFT);
+                }
+                sink.sendKey(key, true, mask);
+                sink.sendKey(key, false, mask);
+                if (shift) sink.sendKey((short) ActionPadKeyMap.VK_LSHIFT, false, (byte) 0);
             }, delay);
             delay += MACRO_STEP_MS;
         }

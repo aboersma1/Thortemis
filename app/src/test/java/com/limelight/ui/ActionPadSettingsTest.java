@@ -42,4 +42,30 @@ public class ActionPadSettingsTest {
         for (int seconds : ActionPadSettings.DIM_SECONDS) expected.add(seconds);
         assertEquals(expected, values);
     }
+
+    private static List<String> arrayItems(String name) throws Exception {
+        String xml = new String(Files.readAllBytes(new File("src/main/res/values/action_pad_arrays.xml").toPath()), "UTF-8");
+        Matcher block = Pattern.compile("<string-array name=\"" + name + "\">(.*?)</string-array>", Pattern.DOTALL).matcher(xml);
+        org.junit.Assert.assertTrue(name, block.find());
+        Matcher item = Pattern.compile("<item>(.*?)</item>").matcher(block.group(1));
+        List<String> out = new ArrayList<>();
+        while (item.find()) out.add(item.group(1));
+        return out;
+    }
+
+    @Test
+    public void tabChoicesMatchTheTabsOnThePad() throws Exception {
+        assertEquals(ActionPadKeyMap.tabIds(), arrayItems("action_pad_tab_values"));
+        List<String> names = new ArrayList<>();
+        for (String id : ActionPadKeyMap.tabIds()) names.add(ActionPadKeyMap.tabTitle(id));
+        assertEquals(names, arrayItems("action_pad_tab_names"));
+        assertEquals(new ArrayList<>(ActionPadSettings.defaultTabs()), arrayItems("action_pad_tab_defaults"));
+    }
+
+    @Test
+    public void everyTabButFKeysIsOnByDefault() {
+        List<String> expected = new ArrayList<>(ActionPadKeyMap.tabIds());
+        expected.remove("fkeys");
+        assertEquals(expected, new ArrayList<>(ActionPadSettings.defaultTabs()));
+    }
 }

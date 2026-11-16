@@ -14,6 +14,9 @@ import java.util.Set;
  */
 public final class ActionPadSettings {
     private static final String KEY_TABS = "multi_action_pad_tabs";
+    /** Which tabs the saved tab list knew about. 2 added Replies, which a list saved before it should still show. */
+    private static final String KEY_TABS_VERSION = "action_pad_tabs_version";
+    private static final int TABS_VERSION = 2;
     private static final String KEY_THEME = "list_action_pad_theme";
     private static final String KEY_DIM = "list_action_pad_dim";
     private static final String KEY_SIDE_BY_SIDE = "checkbox_action_pad_side_by_side";
@@ -41,7 +44,7 @@ public final class ActionPadSettings {
     private static final String HIDDEN_BY_DEFAULT = "fkeys";
 
     /** Ids of the tabs to show. Never empty. */
-    public final Set<String> shownTabs;
+    public Set<String> shownTabs;
     public ActionPadTheme theme;
     /** Idle time before the pad dims, or 0 for never. */
     public long dimMs;
@@ -73,6 +76,10 @@ public final class ActionPadSettings {
     private ActionPadSettings(SharedPreferences p) {
         prefs = p;
         Set<String> tabs = new LinkedHashSet<>(p.getStringSet(KEY_TABS, defaultTabs()));
+        if (p.contains(KEY_TABS) && p.getInt(KEY_TABS_VERSION, 1) < TABS_VERSION) {
+            tabs.add(ActionPadKeyMap.REPLIES_TAB_ID);
+            p.edit().putStringSet(KEY_TABS, new LinkedHashSet<>(tabs)).putInt(KEY_TABS_VERSION, TABS_VERSION).apply();
+        }
         tabs.retainAll(ActionPadKeyMap.tabIds());
         if (tabs.isEmpty()) tabs.addAll(ActionPadKeyMap.tabIds());
         shownTabs = tabs;
@@ -124,6 +131,12 @@ public final class ActionPadSettings {
     public void saveKeyboardLayout(String id) {
         keyboardLayout = id;
         prefs.edit().putString(KEY_KEYBOARD, id).apply();
+    }
+
+    /** Turns one tab on or off. The last tab on stays on. */
+    public void toggleTab(String id) {
+        shownTabs = ActionPadKeyMap.toggledTabs(shownTabs, id);
+        prefs.edit().putStringSet(KEY_TABS, new LinkedHashSet<>(shownTabs)).putInt(KEY_TABS_VERSION, TABS_VERSION).apply();
     }
 
     public void saveDimSeconds(int seconds) {

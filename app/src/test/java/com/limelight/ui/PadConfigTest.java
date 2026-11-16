@@ -165,4 +165,62 @@ public class PadConfigTest {
         config.setHidden("Guild", true);
         assertSame(INTERFACE.get(0), config.resolve("interface", INTERFACE, false).get(0));
     }
+
+    private static final List<Slot> REPLIES = repliesPage();
+
+    private static List<Slot> repliesPage() {
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) if (page.id.equals("replies")) return page.slots;
+        throw new AssertionError("no replies page");
+    }
+
+    @Test
+    public void ownMessageReplacesTheDefaultText() {
+        PadConfig config = new PadConfig();
+        config.setMacro("Thanks", "Thanks a lot, healer!");
+        assertEquals("Thanks a lot, healer!", byId(config.resolve("replies", REPLIES, false), "Thanks").macro);
+        assertEquals("Ready when you are", byId(config.resolve("replies", REPLIES, false), "Ready").macro);
+    }
+
+    @Test
+    public void blankOrUntypeableMessageGoesBackToTheDefault() {
+        PadConfig config = new PadConfig();
+        config.setMacro("Thanks", "Something else");
+        config.setMacro("Thanks", "   ");
+        assertTrue(config.isEmpty());
+        config.setMacro("Thanks", "no \u00e9 here");
+        assertTrue(config.isEmpty());
+        assertEquals("Thanks!", byId(config.resolve("replies", REPLIES, false), "Thanks").macro);
+    }
+
+    @Test
+    public void messageSurvivesSavingAndLoading() {
+        PadConfig config = new PadConfig();
+        config.setMacro("Thanks", "/p Thanks, all!");
+        config.setName("Thanks", "TY");
+        PadConfig back = PadConfig.parse(config.serialize());
+        Slot slot = byId(back.resolve("replies", REPLIES, false), "Thanks");
+        assertEquals("/p Thanks, all!", slot.macro);
+        assertEquals("TY", slot.label);
+    }
+
+    @Test
+    public void buttonsSavedByEarlierVersionsStillLoad() {
+        PadConfig old = PadConfig.parse("E\tBags\t86\t0\t0\t0\tPack\n");
+        assertEquals("Pack", byId(old.resolve("interface", INTERFACE, false), "Bags").label);
+    }
+
+    @Test
+    public void aMessageEditDoesNothingToAButtonThatIsNotAChatMacro() {
+        PadConfig config = new PadConfig();
+        config.setMacro("Character", "Hello");
+        assertEquals(null, byId(config.resolve("interface", INTERFACE, false), "Character").macro);
+    }
+
+    @Test
+    public void resetButtonAlsoBringsBackTheDefaultMessage() {
+        PadConfig config = new PadConfig();
+        config.setMacro("Thanks", "Cheers");
+        config.resetButton("Thanks");
+        assertEquals("Thanks!", byId(config.resolve("replies", REPLIES, false), "Thanks").macro);
+    }
 }
