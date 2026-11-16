@@ -40,7 +40,7 @@ final class PadKeyboardLayouts {
             "q w e r t y u i o p",
             "a s d f g h j k l Bksp",
             "Shift:1.5 z x c v b n m Enter:1.5",
-            SYMBOLS_KEY + ":1.5 Esc Tab Ctrl Alt Space:4.5"}, {
+            SYMBOLS_KEY + ":1.5 Esc Tab Ctrl Alt Space:3.5 /"}, {
             DIGITS,
             "- = [ ] ; ' , . / Bksp",
             "← ↑ ↓ → Home End PgUp PgDn Ins Del",

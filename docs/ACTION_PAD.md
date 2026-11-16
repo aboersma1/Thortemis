@@ -79,17 +79,17 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 
 ## Tests
 
-73 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
+75 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
 | `PadInputTest` | 11 | Modifiers, combos, macros (including Shift around capitals), mouse hold, and a 300-seed fuzz that checks no key is left stuck |
 | `PadConfigTest` | 19 | Set, move, hide, reset, and save/load including bad input |
-| `ActionPadKeyMapTest` | 23 | Layout data is consistent: unique ids, valid key codes, picker list |
+| `ActionPadKeyMapTest` | 24 | Layout data is consistent: unique ids, valid key codes, picker list |
 | `ActionPadThemeTest` | 6 | Theme list matches the settings arrays; text is readable on each theme |
 | `ActionPadSettingsTest` | 6 | Which profile the Profile button loads next; fade and tab choices match the settings screen |
 | `WhatsNewTest` | 2 | When the notes show |
-| `PadKeyboardLayoutsTest` | 6 | Every key in every layout is known, rows fill the width, nothing is unreachable |
+| `PadKeyboardLayoutsTest` | 7 | Every key in every layout is known, rows fill the width, nothing is unreachable, `/` is on every layout's first layer |
 
 ```
 ./gradlew testNonRoot_gameDebugUnitTest --tests 'com.limelight.ui.ActionPad*' --tests 'com.limelight.ui.Pad*'

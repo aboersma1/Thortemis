@@ -101,4 +101,15 @@ public class PadKeyboardLayoutsTest {
             assertEquals(Arrays.asList(pair[1].equals("ids") ? PadKeyboardLayouts.IDS : PadKeyboardLayouts.NAMES), items);
         }
     }
+
+    @Test
+    public void slashIsOnTheFirstLayerOfEveryLayout() {
+        for (String id : PadKeyboardLayouts.IDS) {
+            boolean found = false;
+            for (String row : PadKeyboardLayouts.layers(id)[0]) {
+                for (String token : row.split(" ")) if (PadKeyboardLayouts.keyName(token).equals("/")) found = true;
+            }
+            org.junit.Assert.assertTrue(id + " has no / without switching layers", found);
+        }
+    }
 }

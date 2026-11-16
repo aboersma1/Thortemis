@@ -219,6 +219,8 @@ public final class ActionPadKeyMap {
                     macro("Dismount", "/dismount")),
             // Plain lines for whatever channel the chat box opens in. A "/p " or "/s " in front picks one.
             new Page(ActionPadKeyMap.REPLIES_TAB_ID, "Replies", true,
+                    macro("Hello", "Hello everyone!"),
+                    macro("Goodbye", "Thanks for the run, bye!"),
                     macro("Thanks", "Thanks!"),
                     macro("On my way", "On my way!"),
                     macro("Be right back", "BRB, one minute"),
@@ -231,8 +233,6 @@ public final class ActionPadKeyMap {
                     macro("Sorry", "Sorry about that"),
                     macro("Good job", "Nice job everyone!"),
                     macro("No problem", "No problem!"),
-                    macro("Hello", "Hello everyone!"),
-                    macro("Goodbye", "Thanks for the run, bye!"),
                     macro("Good luck", "Good luck!"),
                     macro("Lets go", "Let's go!"),
                     macro("Hold up", "Hold up, wait for the tank"),

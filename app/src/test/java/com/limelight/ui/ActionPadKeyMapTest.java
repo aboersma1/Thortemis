@@ -166,6 +166,16 @@ public class ActionPadKeyMapTest {
     }
 
     @Test
+    public void repliesStartWithHelloAndGoodbye() {
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
+            if (page.id.equals(ActionPadKeyMap.REPLIES_TAB_ID)) {
+                assertEquals("Hello", page.slots.get(0).id);
+                assertEquals("Goodbye", page.slots.get(1).id);
+            }
+        }
+    }
+
+    @Test
     public void pagesFitTheirLayout() {
         for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
             assertTrue(page.id, page.slots.size() <= (page.fullWidth ? ActionPadKeyMap.MAX_FULL_PAGE : 12));

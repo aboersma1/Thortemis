@@ -165,7 +165,8 @@ public class PadInputTest {
     public void chatMacroHoldsShiftAroundCapitalsAndPunctuation() {
         PadConfig config = new PadConfig();
         config.setMacro("Thanks", "Hi!");
-        Slot thanks = config.resolve("replies", repliesSlots(), false).get(0);
+        Slot thanks = null;
+        for (Slot s : config.resolve("replies", repliesSlots(), false)) if (s.id.equals("Thanks")) thanks = s;
         input.press(thanks);
         host.events.clear();
         later.runAll();
