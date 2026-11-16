@@ -50,7 +50,7 @@ public class ActionPadKeyMapTest {
     public void pagesFitAndLabelsAreUnique() {
         Set<String> labels = new HashSet<>();
         for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
-            assertTrue(page.title, page.slots.size() <= 12);
+            assertTrue(page.title, page.slots.size() <= (page.fullWidth ? ActionPadKeyMap.MAX_FULL_PAGE : 12));
             for (ActionPadKeyMap.Slot slot : page.slots) {
                 assertTrue("duplicate label " + slot.label, labels.add(slot.label));
             }
@@ -156,12 +156,20 @@ public class ActionPadKeyMapTest {
     }
 
     @Test
-    public void repliesPageIsMacrosAndFitsTheGrid() {
+    public void repliesPageIsFullScreenMacros() {
         ActionPadKeyMap.Page replies = null;
         for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) if (page.id.equals(ActionPadKeyMap.REPLIES_TAB_ID)) replies = page;
         assertTrue(replies != null);
-        assertTrue(replies.slots.size() >= 8 && replies.slots.size() <= 12);
+        assertTrue(replies.fullWidth);
+        assertEquals(24, replies.slots.size());
         for (ActionPadKeyMap.Slot slot : replies.slots) assertTrue(slot.label, slot.macro != null && ActionPadKeyMap.canType(slot.macro));
+    }
+
+    @Test
+    public void pagesFitTheirLayout() {
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
+            assertTrue(page.id, page.slots.size() <= (page.fullWidth ? ActionPadKeyMap.MAX_FULL_PAGE : 12));
+        }
     }
 
     @Test

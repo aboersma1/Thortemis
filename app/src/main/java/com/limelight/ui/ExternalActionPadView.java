@@ -115,15 +115,19 @@ public class ExternalActionPadView extends FrameLayout {
     }
 
     private void buildTabs() {
+        // Side by side puts the ordinary pages in one tab. A full-screen page keeps a tab of its own.
         List<Page> shown = new ArrayList<>();
+        List<Page> full = new ArrayList<>();
         for (Page page : ActionPadKeyMap.PAGES) {
-            if (settings.shownTabs.contains(page.id)) shown.add(page);
+            if (!settings.shownTabs.contains(page.id)) continue;
+            if (page.fullWidth) full.add(page); else shown.add(page);
         }
         if (settings.sideBySide && !shown.isEmpty()) {
             tabs.add(new Tab("Pages", Kind.KEYS, shown));
         } else {
             for (Page page : shown) tabs.add(new Tab(page.title, Kind.KEYS, Collections.singletonList(page)));
         }
+        for (Page page : full) tabs.add(new Tab(page.title, Kind.KEYS, Collections.singletonList(page)));
         if (settings.shownTabs.contains(ActionPadKeyMap.MOUSE_TAB_ID)) tabs.add(new Tab("Mouse", Kind.MOUSE, Collections.<Page>emptyList()));
         if (settings.shownTabs.contains(ActionPadKeyMap.KEYBOARD_TAB_ID)) tabs.add(new Tab("Keyboard", Kind.KEYBOARD, Collections.<Page>emptyList()));
     }
@@ -251,8 +255,8 @@ public class ExternalActionPadView extends FrameLayout {
 
         Tab tab = tabs.get(tabIndex);
         pageHost.removeAllViews();
-        // The touchpad and keyboard take the whole width, so the number block steps aside.
-        rightColumn.setVisibility(tab.kind == Kind.KEYS ? VISIBLE : GONE);
+        // The touchpad, keyboard and full-screen pages take the whole width, so the number block steps aside.
+        rightColumn.setVisibility(tab.kind == Kind.KEYS && !tab.pages.get(0).fullWidth ? VISIBLE : GONE);
         if (tab.kind == Kind.MOUSE) {
             input.releaseModifiers();
             pageHost.addView(new PadTouchpad(kit), kit.weighted(pageHost, 1f));
@@ -266,13 +270,16 @@ public class ExternalActionPadView extends FrameLayout {
 
     private void addPage(Page page) {
         List<Slot> slots = settings.config.resolve(page.id, page.slots, false);
-        boolean wide = tabs.get(tabIndex).pages.size() == 1 && slots.size() > SINGLE_COLUMN_MAX;
-        int columns = wide ? 2 : 1;
+        boolean single = tabs.get(tabIndex).pages.size() == 1;
+        boolean wide = single && slots.size() > SINGLE_COLUMN_MAX;
+        int columns = page.fullWidth
+                ? Math.max(1, (slots.size() + ActionPadKeyMap.FULL_PAGE_ROWS - 1) / ActionPadKeyMap.FULL_PAGE_ROWS)
+                : wide ? 2 : 1;
         int perColumn = (slots.size() + columns - 1) / columns;
         for (int c = 0; c < columns; c++) {
             LinearLayout column = kit.box(LinearLayout.VERTICAL);
             for (Slot slot : slots.subList(Math.min(c * perColumn, slots.size()), Math.min((c + 1) * perColumn, slots.size()))) {
-                float sp = tabs.get(tabIndex).pages.size() > 1 ? 12 : wide ? 14 : 18;
+                float sp = !single ? 12 : page.fullWidth ? 13 : wide ? 14 : 18;
                 column.addView(keyButton(slot, wrapLabel(slot.label), sp, false), kit.weighted(column, 1f));
             }
             pageHost.addView(column, kit.weighted(pageHost, 1f));

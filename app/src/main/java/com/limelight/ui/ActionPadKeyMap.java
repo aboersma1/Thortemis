@@ -129,10 +129,17 @@ public final class ActionPadKeyMap {
         public final String id;
         public final String title;
         public final List<Slot> slots;
+        /** Takes the whole screen, with no modifier row or number block beside it, and may hold up to {@link #MAX_FULL_PAGE} buttons. */
+        public final boolean fullWidth;
 
         Page(String id, String title, Slot... slots) {
+            this(id, title, false, slots);
+        }
+
+        Page(String id, String title, boolean fullWidth, Slot... slots) {
             this.id = id;
             this.title = title;
+            this.fullWidth = fullWidth;
             this.slots = Collections.unmodifiableList(Arrays.asList(slots));
         }
     }
@@ -162,7 +169,11 @@ public final class ActionPadKeyMap {
         return number(label, vk);
     }
 
-    /** The pages, in tab order. A page holds at most 12 buttons. */
+    /** Most buttons on a full-screen page, laid out in rows of {@link #FULL_PAGE_ROWS}. */
+    public static final int MAX_FULL_PAGE = 24;
+    public static final int FULL_PAGE_ROWS = 6;
+
+    /** The pages, in tab order. A page beside the number block holds at most 12 buttons. */
     public static final List<Page> PAGES = Collections.unmodifiableList(Arrays.asList(
             new Page("interface", "Interface",
                     page("Character", 'C'),
@@ -207,7 +218,7 @@ public final class ActionPadKeyMap {
                     macro("Assist", "/assist"),
                     macro("Dismount", "/dismount")),
             // Plain lines for whatever channel the chat box opens in. A "/p " or "/s " in front picks one.
-            new Page(ActionPadKeyMap.REPLIES_TAB_ID, "Replies",
+            new Page(ActionPadKeyMap.REPLIES_TAB_ID, "Replies", true,
                     macro("Thanks", "Thanks!"),
                     macro("On my way", "On my way!"),
                     macro("Be right back", "BRB, one minute"),
@@ -219,7 +230,19 @@ public final class ActionPadKeyMap {
                     macro("Invite me", "Invite please?"),
                     macro("Sorry", "Sorry about that"),
                     macro("Good job", "Nice job everyone!"),
-                    macro("No problem", "No problem!")),
+                    macro("No problem", "No problem!"),
+                    macro("Hello", "Hello everyone!"),
+                    macro("Goodbye", "Thanks for the run, bye!"),
+                    macro("Good luck", "Good luck!"),
+                    macro("Lets go", "Let's go!"),
+                    macro("Hold up", "Hold up, wait for the tank"),
+                    macro("Need rez", "Need a rez please"),
+                    macro("Buffs please", "Buffs please?"),
+                    macro("LFG", "Looking for group, any role"),
+                    macro("Summon me", "Summon please?"),
+                    macro("Incoming", "Incoming, watch out!"),
+                    macro("Nice one", "Nice one!"),
+                    macro("AFK", "AFK, back in a few minutes")),
             new Page("fkeys", "F-Keys", fKeys())));
 
     private static Slot[] fKeys() {
