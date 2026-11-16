@@ -223,4 +223,13 @@ public class PadConfigTest {
         config.resetButton("Thanks");
         assertEquals("Thanks!", byId(config.resolve("replies", REPLIES, false), "Thanks").macro);
     }
+
+    @Test
+    public void aChannelButtonKeepsItsPrefixWhateverIsSaved() {
+        List<Slot> chat = null;
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) if (page.id.equals("chat")) chat = page.slots;
+        PadConfig config = new PadConfig();
+        config.setMacro("Party chat", "hello");
+        assertEquals("/p ", byId(config.resolve("chat", chat, false), "Party chat").macro);
+    }
 }

@@ -182,6 +182,8 @@ final class PadEditor extends LinearLayout {
             list.addView(heading("Sends: " + describe(slot)));
             list.addView(modifierChips(group, slot));
             list.addView(keyGrid(group, slot));
+        } else if (slot.opensKeyboard) {
+            list.addView(heading("Opens chat with " + slot.macro.trim()));
         } else {
             list.addView(heading("Types: " + slot.macro));
             List<View> message = new ArrayList<>();

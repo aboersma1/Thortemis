@@ -119,7 +119,7 @@ public final class ActionPadKeyMap {
 
         /** Same, with the player's own chat text in place of the default. Ignored for a button that is not a chat macro. */
         public Slot with(String label, int vk, int[] mods, int color, String message) {
-            String text = macro != null && message != null && canType(message) ? message : macro;
+            String text = macro != null && !opensKeyboard && message != null && canType(message) ? message : macro;
             return new Slot(id, label, vk, mods, isolated, text, opensKeyboard, color);
         }
     }
@@ -159,6 +159,14 @@ public final class ActionPadKeyMap {
         return new Slot(label, label, VK_RETURN, new int[0], true, text, false, 0);
     }
 
+    /**
+     * A channel button: opens chat, types {@code prefix} (such as "/p ") and leaves the box open with the
+     * on-screen keyboard up, ready for the message.
+     */
+    private static Slot opener(String label, String prefix) {
+        return new Slot(label, label, VK_RETURN, new int[0], true, prefix, true, 0);
+    }
+
     /** A button that takes whatever Shift, Ctrl or Alt is armed on the pad. */
     private static Slot number(String label, int vk, int... mods) {
         return new Slot(label, label, vk, mods, false, null, false, 0);
@@ -171,9 +179,10 @@ public final class ActionPadKeyMap {
 
     /** Most buttons on a full-screen page, laid out in rows of {@link #FULL_PAGE_ROWS}. */
     public static final int MAX_FULL_PAGE = 24;
+    public static final int MAX_PAGE = 14;
     public static final int FULL_PAGE_ROWS = 6;
 
-    /** The pages, in tab order. A page beside the number block holds at most 12 buttons. */
+    /** The pages, in tab order. A page beside the number block holds at most {@link #MAX_PAGE} buttons, in one column or two. */
     public static final List<Page> PAGES = Collections.unmodifiableList(Arrays.asList(
             new Page("interface", "Interface",
                     page("Character", 'C'),
@@ -208,15 +217,22 @@ public final class ActionPadKeyMap {
                     page("Chat page up", VK_PRIOR),
                     page("Chat page down", VK_NEXT),
                     page("Screenshot", VK_SNAPSHOT)),
+            // Two columns of seven: channels to open on the left, commands on the right.
             new Page("chat", "Chat",
                     chat("Open chat", VK_RETURN),
+                    chat("Reply", 'R'),
+                    opener("Party chat", "/p "),
+                    opener("Guild chat", "/g "),
+                    opener("Raid chat", "/raid "),
+                    opener("Say", "/s "),
+                    opener("Yell", "/y "),
                     chat("Slash command", VK_OEM_2),
-                    page("Reply", 'R'),
                     macro("Sit", "/sit"),
                     macro("Dance", "/dance"),
                     macro("Follow", "/follow"),
                     macro("Assist", "/assist"),
-                    macro("Dismount", "/dismount")),
+                    macro("Dismount", "/dismount"),
+                    macro("Wave", "/wave")),
             // Plain lines for whatever channel the chat box opens in. A "/p " or "/s " in front picks one.
             new Page(ActionPadKeyMap.REPLIES_TAB_ID, "Replies", true,
                     macro("Hello", "Hello everyone!"),
@@ -324,10 +340,15 @@ public final class ActionPadKeyMap {
      * A character that needs Shift has {@link #MACRO_SHIFT} added to its key code.
      */
     public static int[] macroKeys(String text) {
-        int[] keys = new int[text.length() + 2];
+        return macroKeys(text, true);
+    }
+
+    /** Same, but with {@code send} false the closing Enter is left off, so the line stays in the chat box. */
+    public static int[] macroKeys(String text, boolean send) {
+        int[] keys = new int[text.length() + (send ? 2 : 1)];
         keys[0] = VK_RETURN;
         for (int i = 0; i < text.length(); i++) keys[i + 1] = macroCode(text.charAt(i), text);
-        keys[keys.length - 1] = VK_RETURN;
+        if (send) keys[keys.length - 1] = VK_RETURN;
         return keys;
     }
 

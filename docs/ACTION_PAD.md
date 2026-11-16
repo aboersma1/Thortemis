@@ -70,22 +70,23 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 - **Stable button ids.** Remaps are stored against a button's default label, not its position, so reordering or hiding never breaks a saved change. Cost: renaming a default label in code orphans saved changes.
 - **Defaults are never edited.** `PadConfig` is a list of overrides, so "reset button" just deletes an override.
 - **Settings read once.** `ActionPadSettings.load` snapshots every preference when the view is created. Changes in the settings screen apply the next time the pad is created. The editor can change the theme, fade time, keyboard layout and which tabs are on live: it saves them, then `rebuild()` re-applies them (and rebuilds the tab list, staying on the same tab if it is still there).
+- **Channel openers.** Party, Guild, Raid, Say and Yell on the Chat page are macro slots that also have `opensKeyboard`: `PadInput` types Enter and the prefix (`/p `) without the closing Enter, and the view brings up the keyboard on release. Their text is fixed, so the editor does not offer Edit message for them. The Chat page is two columns of seven (`MAX_PAGE` is 14); the view splits any page of more than eight buttons in half, so hiding a button moves the split.
 - **Full-screen pages.** A `Page` with `fullWidth` (Replies) hides the modifier row and number block and lays its buttons out in rows of 6 (`FULL_PAGE_ROWS`), up to 24 (`MAX_FULL_PAGE`). In side-by-side mode it keeps its own tab. Other pages stay at 12.
 - **Tabs on/off share one preference.** The Edit screen's Tabs chips and Settings, Action pad tabs both read and write `multi_action_pad_tabs`. `ActionPadKeyMap.toggledTabs` keeps display order and refuses to turn off the last tab. A saved tab list from before Replies existed gets Replies added once (`action_pad_tabs_version`).
-- **Chat text is an override too.** A Replies or Chat button's text is stored like a rename (an optional eighth field on its `E` line, so lines from 1.0.3 still load). `macroKeys` types letters in either case, digits, space and the on-screen keyboard's punctuation; a character that needs Shift carries `MACRO_SHIFT`, and `PadInput` holds Shift around it. Text a button cannot type is ignored and the default is used.
+- **Chat text is an override too.** A Replies or Chat command button's text (not a channel opener's) is stored like a rename (an optional eighth field on its `E` line, so lines from 1.0.3 still load). `macroKeys` types letters in either case, digits, space and the on-screen keyboard's punctuation; a character that needs Shift carries `MACRO_SHIFT`, and `PadInput` holds Shift around it. Text a button cannot type is ignored and the default is used.
 - **Plain preferences, text-serialised config.** No database or JSON library; the format is hand-rolled (tab-separated lines).
 - **minSdk 21, Java 11.** Main code avoids newer APIs such as `Map.getOrDefault`.
 - **Shared presses are counted.** Mouse buttons use hold counts, so tapping Left while Hold is on does not release the held button.
 
 ## Tests
 
-75 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
+79 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
-| `PadInputTest` | 11 | Modifiers, combos, macros (including Shift around capitals), mouse hold, and a 300-seed fuzz that checks no key is left stuck |
-| `PadConfigTest` | 19 | Set, move, hide, reset, and save/load including bad input |
-| `ActionPadKeyMapTest` | 24 | Layout data is consistent: unique ids, valid key codes, picker list |
+| `PadInputTest` | 12 | Modifiers, combos, macros (including Shift around capitals), mouse hold, and a 300-seed fuzz that checks no key is left stuck |
+| `PadConfigTest` | 20 | Set, move, hide, reset, and save/load including bad input |
+| `ActionPadKeyMapTest` | 26 | Layout data is consistent: unique ids, valid key codes, picker list |
 | `ActionPadThemeTest` | 6 | Theme list matches the settings arrays; text is readable on each theme |
 | `ActionPadSettingsTest` | 6 | Which profile the Profile button loads next; fade and tab choices match the settings screen |
 | `WhatsNewTest` | 2 | When the notes show |

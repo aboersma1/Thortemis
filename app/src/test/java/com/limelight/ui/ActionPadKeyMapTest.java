@@ -50,7 +50,7 @@ public class ActionPadKeyMapTest {
     public void pagesFitAndLabelsAreUnique() {
         Set<String> labels = new HashSet<>();
         for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
-            assertTrue(page.title, page.slots.size() <= (page.fullWidth ? ActionPadKeyMap.MAX_FULL_PAGE : 12));
+            assertTrue(page.title, page.slots.size() <= (page.fullWidth ? ActionPadKeyMap.MAX_FULL_PAGE : ActionPadKeyMap.MAX_PAGE));
             for (ActionPadKeyMap.Slot slot : page.slots) {
                 assertTrue("duplicate label " + slot.label, labels.add(slot.label));
             }
@@ -166,6 +166,33 @@ public class ActionPadKeyMapTest {
     }
 
     @Test
+    public void chatPageIsTwoEqualColumnsWithChannelsOnTheLeft() {
+        ActionPadKeyMap.Page chat = null;
+        for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) if (page.id.equals("chat")) chat = page;
+        assertEquals(14, chat.slots.size());
+        String[] left = {"Open chat", "Reply", "Party chat", "Guild chat", "Raid chat", "Say", "Yell"};
+        for (int i = 0; i < left.length; i++) assertEquals(left[i], chat.slots.get(i).id);
+        for (int i = 0; i < left.length; i++) assertTrue(chat.slots.get(i).opensKeyboard);
+    }
+
+    @Test
+    public void channelButtonsTypeTheirPrefixAndLeaveTheBoxOpen() {
+        for (String id : new String[]{"Party chat", "Guild chat", "Raid chat", "Say", "Yell"}) {
+            ActionPadKeyMap.Slot slot = find(id);
+            assertTrue(id, slot.opensKeyboard && slot.macro != null && slot.macro.startsWith("/") && slot.macro.endsWith(" "));
+            int[] keys = ActionPadKeyMap.macroKeys(slot.macro, false);
+            assertEquals(slot.macro.length() + 1, keys.length);
+            assertEquals(0x0D, keys[0]);
+            assertTrue(keys[keys.length - 1] != 0x0D);
+        }
+        assertEquals("/p ", find("Party chat").macro);
+        assertEquals("/g ", find("Guild chat").macro);
+        assertEquals("/raid ", find("Raid chat").macro);
+        assertEquals("/s ", find("Say").macro);
+        assertEquals("/y ", find("Yell").macro);
+    }
+
+    @Test
     public void repliesStartWithHelloAndGoodbye() {
         for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
             if (page.id.equals(ActionPadKeyMap.REPLIES_TAB_ID)) {
@@ -178,7 +205,7 @@ public class ActionPadKeyMapTest {
     @Test
     public void pagesFitTheirLayout() {
         for (ActionPadKeyMap.Page page : ActionPadKeyMap.PAGES) {
-            assertTrue(page.id, page.slots.size() <= (page.fullWidth ? ActionPadKeyMap.MAX_FULL_PAGE : 12));
+            assertTrue(page.id, page.slots.size() <= (page.fullWidth ? ActionPadKeyMap.MAX_FULL_PAGE : ActionPadKeyMap.MAX_PAGE));
         }
     }
 
@@ -270,7 +297,7 @@ public class ActionPadKeyMapTest {
     public void chatButtonsOpenTheKeyboardAndMacrosDoNot() {
         assertTrue(find("Open chat").opensKeyboard);
         assertTrue(find("Slash command").opensKeyboard);
-        assertTrue(!find("Reply").opensKeyboard);
+        assertTrue(find("Reply").opensKeyboard);
         assertTrue(find("Sit").macro != null && !find("Sit").opensKeyboard);
     }
 }

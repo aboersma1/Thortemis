@@ -162,6 +162,14 @@ public class PadInputTest {
     }
 
     @Test
+    public void channelButtonTypesItsPrefixAndDoesNotSend() {
+        assertEquals(null, input.press(page("Party chat")));
+        host.events.clear();
+        later.runAll();
+        assertEquals(Arrays.asList("+0D/0", "-0D/0", "+BF/0", "-BF/0", "+50/0", "-50/0", "+20/0", "-20/0"), host.events);
+    }
+
+    @Test
     public void chatMacroHoldsShiftAroundCapitalsAndPunctuation() {
         PadConfig config = new PadConfig();
         config.setMacro("Thanks", "Hi!");

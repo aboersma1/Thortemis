@@ -154,7 +154,7 @@ final class PadInput {
      */
     Press press(Slot slot) {
         if (slot.macro != null) {
-            runMacro(slot.macro);
+            runMacro(slot.macro, !slot.opensKeyboard);
             return null;
         }
         Press p = new Press(slot);
@@ -189,11 +189,11 @@ final class PadInput {
         }
     }
 
-    /** Types a chat line, one key press every {@link #MACRO_STEP_MS}. Armed modifiers are let go first. */
-    private void runMacro(String text) {
+    /** Types a chat line, one key press every {@link #MACRO_STEP_MS}; with {@code send} false it is left in the box. Armed modifiers are let go first. */
+    private void runMacro(String text, boolean send) {
         releaseModifiers();
         long delay = 0;
-        for (int code : ActionPadKeyMap.macroKeys(text)) {
+        for (int code : ActionPadKeyMap.macroKeys(text, send)) {
             final short key = (short) (code & 0xFF);
             final boolean shift = (code & ActionPadKeyMap.MACRO_SHIFT) != 0;
             scheduler.post(() -> {
