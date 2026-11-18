@@ -15,7 +15,7 @@ A more seamless experience with virtual display will be Artemis paired with [Apo
 
 Thortemis is a fork of Artemis that adds an **action pad** for two-screen handhelds such as the AYN Thor. While you stream a game from your PC with Apollo or Sunshine, the second (bottom) screen becomes a touch panel of keys, so you can reach your number bar, interface shortcuts and mouse without a keyboard. It was built for World of Warcraft but sends ordinary Windows key codes, so it works for any game or app.
 
-> **Status:** early release. The pad's logic has automated tests (79 unit tests), but the screens have so far only been checked by building them, not on many devices. Please report problems with your device model and a description of what you saw.
+> **Status:** early release. The pad's logic has automated tests (83 unit tests), but the screens have so far only been checked by building them, not on many devices. Please report problems with your device model and a description of what you saw.
 
 ## What you get
 
@@ -25,7 +25,8 @@ Thortemis is a fork of Artemis that adds an **action pad** for two-screen handhe
 - **Replies tab:** a full-screen grid of 24 one-tap chat lines (Thanks, On my way, Be right back, Need heals, Need rez, LFG, AFK and more), with no number block beside it. Each types into WoW's chat box in whatever channel it opens in. To change the words, tap Edit, pick the button, then Edit message. Start a line with `/p ` or `/s ` to pick a channel.
 - **Modifiers:** Shift, Ctrl and Alt can be tapped once for the next key or locked on, and combined with any button.
 - **Mouse tab:** touchpad with tap-to-click, two-finger right-click, Left/Hold/Right buttons and a scroll strip.
-- **Keyboard tab:** an on-screen keyboard with three layouts you can switch between from Edit: Two layers (the default, big keys with a `/` on the letters layer and a `#+=` key for symbols and arrows), Square grid (everything on one layer) and Classic.
+- **Keyboard tab:** an on-screen keyboard with three layouts you can switch between from Edit: Two layers (the default: big keys, with `' , . /` on the letters layer and a `#+=` key for the rest of the punctuation, Tab, Ctrl, Alt and the navigation keys; Shift, Backspace, Enter and the layer key stay in the same place on both layers), Square grid (everything on one layer) and Classic.
+- **Keyboard touch:** the space between keys still counts as part of a key, so a finger between two letters types one of them instead of nothing.
 - **Extra buttons:** an optional panel of up to 10 more keys (F8 to F12, then Shift plus F8 to F12).
 - **Customize:** change any button's key, name and outline colour, hide buttons, reorder them, and save up to three profiles. Reset one button or everything.
 - **Looks:** change theme and fade time from the Edit screen, even mid-stream. 15 themes (Alliance Blue default, Classic, TBC, Wrath, Cata, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight, TWW, Midnight, OLED Black, Cyberpunk).

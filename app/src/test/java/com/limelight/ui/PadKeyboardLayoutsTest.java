@@ -112,4 +112,61 @@ public class PadKeyboardLayoutsTest {
             org.junit.Assert.assertTrue(id + " has no / without switching layers", found);
         }
     }
+
+    /** The tokens of one row of a layer. */
+    private static String[] row(String id, int layer, int row) {
+        return PadKeyboardLayouts.layers(id)[layer][row].split(" ");
+    }
+
+    @Test
+    public void shiftStaysOnTheLeftOfRowFourOnEveryLayer() {
+        String[][] layers = PadKeyboardLayouts.layers(PadKeyboardLayouts.LAYERS);
+        for (int layer = 0; layer < layers.length; layer++) {
+            String[] tokens = row(PadKeyboardLayouts.LAYERS, layer, 3);
+            assertEquals("layer " + layer, "Shift", PadKeyboardLayouts.keyName(tokens[0]));
+            assertEquals("layer " + layer, 1.5f, PadKeyboardLayouts.weight(tokens[0]), 0.001f);
+        }
+    }
+
+    @Test
+    public void theFrameKeysDoNotMoveBetweenLayers() {
+        String id = PadKeyboardLayouts.LAYERS;
+        for (int layer = 0; layer < 2; layer++) {
+            String[] four = row(id, layer, 3), five = row(id, layer, 4);
+            assertEquals("Bksp", PadKeyboardLayouts.keyName(four[four.length - 1]));
+            assertEquals(1.5f, PadKeyboardLayouts.weight(four[four.length - 1]), 0.001f);
+            assertEquals("Enter", PadKeyboardLayouts.keyName(five[five.length - 1]));
+            assertEquals(1.5f, PadKeyboardLayouts.weight(five[five.length - 1]), 0.001f);
+            assertEquals(1.5f, PadKeyboardLayouts.weight(five[0]), 0.001f);
+        }
+        assertEquals(PadKeyboardLayouts.SYMBOLS_KEY, PadKeyboardLayouts.keyName(row(id, 0, 4)[0]));
+        assertEquals(PadKeyboardLayouts.LETTERS_KEY, PadKeyboardLayouts.keyName(row(id, 1, 4)[0]));
+    }
+
+    @Test
+    public void shiftIsOnTheLeftInEveryLayout() {
+        for (String id : PadKeyboardLayouts.IDS) {
+            boolean found = false;
+            for (String[] layer : PadKeyboardLayouts.layers(id)) {
+                for (String r : layer) {
+                    String[] tokens = r.split(" ");
+                    for (int i = 0; i < tokens.length; i++) {
+                        if (PadKeyboardLayouts.keyName(tokens[i]).equals("Shift")) {
+                            found = true;
+                            assertEquals(id + ": " + r, 0, i);
+                        }
+                    }
+                }
+            }
+            assertTrue(id + " has no Shift", found);
+        }
+    }
+
+    @Test
+    public void chatPunctuationIsOnTheLetterLayer() {
+        String first = String.join(" ", PadKeyboardLayouts.layers(PadKeyboardLayouts.LAYERS)[0]);
+        for (String key : new String[]{"'", ",", ".", "/", "Esc", "Space", "Enter", "Bksp"}) {
+            assertTrue(key, (" " + first.replaceAll(":[0-9.]+", "") + " ").contains(" " + key + " "));
+        }
+    }
 }

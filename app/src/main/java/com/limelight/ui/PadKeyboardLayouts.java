@@ -35,17 +35,22 @@ final class PadKeyboardLayouts {
             "Shift:2 Esc Tab - = [ ] ' Bksp",
             "Ctrl Alt Space:3 Enter ← ↑ ↓ →"}};
 
+    /**
+     * Two layers that share their frame: Shift is always the left key of row 4, Backspace the right key
+     * of row 4, the layer switch the left key of row 5 and Enter its right key, so nothing moves when
+     * the layer changes. Letters and the punctuation used most in chat are on the first layer.
+     */
     private static final String[][] LAYERS_LAYERS = {{
             DIGITS,
             "q w e r t y u i o p",
-            "a s d f g h j k l Bksp",
-            "Shift:1.5 z x c v b n m Enter:1.5",
-            SYMBOLS_KEY + ":1.5 Esc Tab Ctrl Alt Space:3.5 /"}, {
+            "a s d f g h j k l '",
+            "Shift:1.5 z x c v b n m Bksp:1.5",
+            SYMBOLS_KEY + ":1.5 Esc , Space:3 . / Enter:1.5"}, {
             DIGITS,
-            "- = [ ] ; ' , . / Bksp",
+            "- = [ ] ; ' , . / Tab",
             "← ↑ ↓ → Home End PgUp PgDn Ins Del",
-            "Esc Tab Ctrl Alt Shift:2 Enter:4",
-            LETTERS_KEY + ":1.5 Space:8.5"}};
+            "Shift:1.5 Ctrl:2 Alt:2 Esc:3 Bksp:1.5",
+            LETTERS_KEY + ":1.5 Space:7 Enter:1.5"}};
 
     private PadKeyboardLayouts() {}
 

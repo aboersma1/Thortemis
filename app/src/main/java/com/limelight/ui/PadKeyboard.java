@@ -1,6 +1,9 @@
 package com.limelight.ui;
 
+import android.annotation.SuppressLint;
+import android.view.MotionEvent;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -38,7 +41,7 @@ final class PadKeyboard extends LinearLayout {
         String[][] layers = PadKeyboardLayouts.layers(capture == null ? kit.settings.keyboardLayout : PadKeyboardLayouts.CLASSIC);
         for (String[] rows : layers) {
             LinearLayout layer = kit.box(VERTICAL);
-            for (String row : rows) layer.addView(buildRow(row), kit.weighted(layer, 1f));
+            for (String row : rows) layer.addView(buildRow(row), new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
             layerViews.add(layer);
             addView(layer, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
         }
@@ -55,9 +58,34 @@ final class PadKeyboard extends LinearLayout {
         LinearLayout out = kit.box(HORIZONTAL);
         for (String token : row.split(" ")) {
             View key = buildKey(PadKeyboardLayouts.keyName(token));
-            if (key != null) out.addView(key, kit.weighted(out, PadKeyboardLayouts.weight(token)));
+            if (key != null) out.addView(cell(key), new LayoutParams(0, LayoutParams.MATCH_PARENT, PadKeyboardLayouts.weight(token)));
         }
         return out;
+    }
+
+    /**
+     * Holds a key so that the gap drawn around it still counts as the key. The cells touch each other, so a
+     * finger between two keys always lands on one of them. A touch in the gap is passed to the key as if it
+     * had landed on its nearest edge.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private View cell(final View key) {
+        final FrameLayout cell = new FrameLayout(kit.context);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+        int gap = kit.dp(3);
+        lp.setMargins(gap, gap, gap, gap);
+        cell.addView(key, lp);
+        cell.setOnTouchListener((v, event) -> {
+            // Only touches the key did not take get here: the ones in the gap.
+            MotionEvent edge = MotionEvent.obtain(event);
+            // The key expects touches in its own coordinates, so move the point there and clamp it to the key.
+            edge.setLocation(Math.max(0, Math.min(event.getX() - key.getLeft(), key.getWidth() - 1)),
+                    Math.max(0, Math.min(event.getY() - key.getTop(), key.getHeight() - 1)));
+            key.dispatchTouchEvent(edge);
+            edge.recycle();
+            return true;
+        });
+        return cell;
     }
 
     /** The key for a layout token, or null when it has no use here (while renaming only typing keys remain). */

@@ -33,7 +33,7 @@ All in `app/src/main/java/com/limelight/ui/`. "Pure" means plain Java with no An
 | `PadKit` | 231 | Android UI | Shared factory for buttons, colours and sizes; refresh callbacks |
 | `ExternalActionPadView` | 366 | Android UI | Main view: tabs, pages, extras panel, chat flow, rebuild |
 | `PadTouchpad` | 206 | Android UI | Mouse tab: touchpad, Left/Hold/Right, scroll strip |
-| `PadKeyboard` | 130 | Android UI | Keyboard tab and the typing capture used for rename and chat; builds whichever layout is chosen |
+| `PadKeyboard` | 150 | Android UI | Keyboard tab and the typing capture used for rename and chat; builds whichever layout is chosen |
 | `PadKeyboardLayouts` | 95 | Pure | The three keyboard layouts as text rows, and which key code each named key sends |
 | `PadEditor` | 402 | Android UI | Customize screen: tabs on/off, remap, rename, recolour, hide, reorder, chat text, profiles, theme, fade time, keyboard layout |
 | `PadDimmer` | 77 | Android UI | Fades the pad after idle time |
@@ -70,6 +70,7 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 - **Stable button ids.** Remaps are stored against a button's default label, not its position, so reordering or hiding never breaks a saved change. Cost: renaming a default label in code orphans saved changes.
 - **Defaults are never edited.** `PadConfig` is a list of overrides, so "reset button" just deletes an override.
 - **Settings read once.** `ActionPadSettings.load` snapshots every preference when the view is created. Changes in the settings screen apply the next time the pad is created. The editor can change the theme, fade time, keyboard layout and which tabs are on live: it saves them, then `rebuild()` re-applies them (and rebuilds the tab list, staying on the same tab if it is still there).
+- **Keyboard keys have no dead gaps.** Each key sits in a cell that fills its share of the row edge to edge; the 3 dp visual gap is the key's margin inside the cell. A touch that lands in the gap is passed to the key (`PadKeyboard.cell`), moved into the key's own coordinates and clamped to its edge. The Two layers frame is fixed: Shift left and Backspace right of row 4, the layer key left and Enter right of row 5, on both layers (a test checks it).
 - **Channel openers.** Party, Guild, Raid, Say and Yell on the Chat page are macro slots that also have `opensKeyboard`: `PadInput` types Enter and the prefix (`/p `) without the closing Enter, and the view brings up the keyboard on release. Their text is fixed, so the editor does not offer Edit message for them. The Chat page is two columns of seven (`MAX_PAGE` is 14); the view splits any page of more than eight buttons in half, so hiding a button moves the split.
 - **Full-screen pages.** A `Page` with `fullWidth` (Replies) hides the modifier row and number block and lays its buttons out in rows of 6 (`FULL_PAGE_ROWS`), up to 24 (`MAX_FULL_PAGE`). In side-by-side mode it keeps its own tab. Other pages stay at 12.
 - **Tabs on/off share one preference.** The Edit screen's Tabs chips and Settings, Action pad tabs both read and write `multi_action_pad_tabs`. `ActionPadKeyMap.toggledTabs` keeps display order and refuses to turn off the last tab. A saved tab list from before Replies existed gets Replies added once (`action_pad_tabs_version`).
@@ -80,7 +81,7 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 
 ## Tests
 
-79 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
+83 plain JUnit tests in `app/src/test/java/com/limelight/ui/`:
 
 | Test file | Tests | Covers |
 | --- | --- | --- |
@@ -90,7 +91,7 @@ To see everything this work changed: `git diff c5cf27f wow-action-pad`.
 | `ActionPadThemeTest` | 6 | Theme list matches the settings arrays; text is readable on each theme |
 | `ActionPadSettingsTest` | 6 | Which profile the Profile button loads next; fade and tab choices match the settings screen |
 | `WhatsNewTest` | 2 | When the notes show |
-| `PadKeyboardLayoutsTest` | 7 | Every key in every layout is known, rows fill the width, nothing is unreachable, `/` is on every layout's first layer |
+| `PadKeyboardLayoutsTest` | 11 | Every key in every layout is known, rows fill the width, nothing is unreachable, `/` is on every layout's first layer |
 
 ```
 ./gradlew testNonRoot_gameDebugUnitTest --tests 'com.limelight.ui.ActionPad*' --tests 'com.limelight.ui.Pad*'
