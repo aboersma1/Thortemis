@@ -137,8 +137,8 @@ final class PadEditor extends LinearLayout {
             }));
         }
         list.addView(chipRows(layouts, 3));
-        list.addView(heading("Swipe typing (beta)"));
-        list.addView(note("Slide a finger across the letters to type a word. While on, letters type when you lift your finger. Off by default."));
+        list.addView(heading("Swipe typing and suggestions (beta)"));
+        list.addView(note("Adds a strip of word suggestions above the keys, and lets you slide a finger across the letters to type a word. While on, letters type when you lift your finger. Off by default."));
         List<View> swipe = new ArrayList<>();
         for (final boolean on : new boolean[]{false, true}) {
             swipe.add(choice(on ? "On (beta)" : "Off", kit.settings.swipeTyping == on, () -> {

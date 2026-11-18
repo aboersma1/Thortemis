@@ -38,6 +38,9 @@ final class PadInput {
         }
     }
 
+    /** How a typed word was capitalised: not at all, its first letter (Shift armed), or every letter (Shift locked). */
+    enum Caps { NONE, FIRST, ALL }
+
     /** Gap between the key presses of a chat macro. */
     static final long MACRO_STEP_MS = 35;
     /** How long a tap-click holds the button down. */
@@ -194,27 +197,33 @@ final class PadInput {
         releaseModifiers();
         long delay = 0;
         for (int code : ActionPadKeyMap.macroKeys(text, send)) {
-            final short key = (short) (code & 0xFF);
-            final boolean shift = (code & ActionPadKeyMap.MACRO_SHIFT) != 0;
-            scheduler.post(() -> {
-                byte mask = 0;
-                if (shift) {
-                    sink.sendKey((short) ActionPadKeyMap.VK_LSHIFT, true, mask);
-                    mask = ActionPadKeyMap.modifierFlag(ActionPadKeyMap.VK_LSHIFT);
-                }
-                sink.sendKey(key, true, mask);
-                sink.sendKey(key, false, mask);
-                if (shift) sink.sendKey((short) ActionPadKeyMap.VK_LSHIFT, false, (byte) 0);
-            }, delay);
+            postCode(code, delay);
             delay += MACRO_STEP_MS;
         }
+    }
+
+    /** Presses and releases a key code later, with Shift held around it when the code carries {@link ActionPadKeyMap#MACRO_SHIFT}. */
+    private void postCode(int code, long delay) {
+        final short key = (short) (code & 0xFF);
+        final boolean shift = (code & ActionPadKeyMap.MACRO_SHIFT) != 0;
+        scheduler.post(() -> {
+            byte mask = 0;
+            if (shift) {
+                sink.sendKey((short) ActionPadKeyMap.VK_LSHIFT, true, mask);
+                mask = ActionPadKeyMap.modifierFlag(ActionPadKeyMap.VK_LSHIFT);
+            }
+            sink.sendKey(key, true, mask);
+            sink.sendKey(key, false, mask);
+            if (shift) sink.sendKey((short) ActionPadKeyMap.VK_LSHIFT, false, (byte) 0);
+        }, delay);
     }
 
     /**
      * Types a word and a space, as a swipe on the keyboard does. Armed Shift capitalises the first letter, or
      * every letter while it is locked. Ctrl and Alt are let go, since a word is not a shortcut.
      */
-    void typeWord(String word) {
+    Caps typeWord(String word) {
+        Caps caps = isLocked(ActionPadKeyMap.VK_LSHIFT) ? Caps.ALL : isArmed(ActionPadKeyMap.VK_LSHIFT) ? Caps.FIRST : Caps.NONE;
         for (int mod : new ArrayList<>(armed)) if (mod != ActionPadKeyMap.VK_LSHIFT) disarm(mod);
         onChanged.run();
         int[] codes = ActionPadKeyMap.typingKeys(word + " ");
@@ -234,6 +243,26 @@ final class PadInput {
                 sink.sendKey(key, true, lockedMask);
                 sink.sendKey(key, false, lockedMask);
             }, delay);
+            delay += MACRO_STEP_MS;
+        }
+        return caps;
+    }
+
+    /**
+     * Takes back a word typed by {@link #typeWord} and types another in its place: {@code erase} Backspaces
+     * (the word and its space), then {@code word} and a space, capitalised the way the first one was.
+     */
+    void replaceWord(int erase, String word, Caps caps) {
+        long delay = 0;
+        for (int i = 0; i < erase; i++) {
+            postCode(ActionPadKeyMap.VK_BACK, delay);
+            delay += MACRO_STEP_MS;
+        }
+        int[] codes = ActionPadKeyMap.typingKeys(word + " ");
+        for (int i = 0; i < codes.length; i++) {
+            boolean letter = codes[i] >= 'A' && codes[i] <= 'Z';
+            boolean capital = letter && (caps == Caps.ALL || caps == Caps.FIRST && i == 0);
+            postCode(capital ? codes[i] | ActionPadKeyMap.MACRO_SHIFT : codes[i], delay);
             delay += MACRO_STEP_MS;
         }
     }

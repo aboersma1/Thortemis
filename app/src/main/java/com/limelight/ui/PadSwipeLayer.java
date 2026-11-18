@@ -18,8 +18,11 @@ import java.util.Map;
  */
 final class PadSwipeLayer extends LinearLayout {
     interface Listener {
-        void onWord(String word);
+        /** The best words for the swipe, best first (at most {@link #CANDIDATES}). */
+        void onWords(List<String> words);
     }
+
+    static final int CANDIDATES = 3;
 
     private final PadKit kit;
     private final String[] layer;
@@ -121,10 +124,10 @@ final class PadSwipeLayer extends LinearLayout {
             centersWidth = getWidth();
             centersHeight = getHeight();
         }
-        List<String> words = PadSwipe.decode(points, centers, getHeight() / (float) layer.length, dictionary, 1);
+        List<String> words = PadSwipe.decode(points, centers, getHeight() / (float) layer.length, dictionary, CANDIDATES);
         if (words.isEmpty()) return;
         if (kit.settings.haptics) performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-        listener.onWord(words.get(0));
+        listener.onWords(words);
     }
 
     private void reset() {

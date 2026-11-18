@@ -46,9 +46,26 @@ final class PadSwipe {
     /** The words to choose from. */
     static final class Dictionary {
         final List<Entry> entries;
+        /** The same words, commonest first, for completions. */
+        private final List<Entry> byRank;
 
         private Dictionary(List<Entry> entries) {
             this.entries = entries;
+            byRank = new ArrayList<>(entries);
+            java.util.Collections.sort(byRank, (a, b) -> a.rank != b.rank ? Integer.compare(a.rank, b.rank) : a.typed.compareTo(b.typed));
+        }
+
+        /** The {@code max} commonest words that start with {@code prefix}, commonest first. */
+        List<String> complete(String prefix, int max) {
+            List<String> out = new ArrayList<>();
+            if (prefix.isEmpty()) return out;
+            for (Entry entry : byRank) {
+                if (entry.typed.startsWith(prefix)) {
+                    out.add(entry.typed);
+                    if (out.size() >= max) break;
+                }
+            }
+            return out;
         }
 
         /**

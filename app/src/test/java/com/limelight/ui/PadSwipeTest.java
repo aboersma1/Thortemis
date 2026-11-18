@@ -136,4 +136,35 @@ public class PadSwipeTest {
             for (char c : entry.letters.toCharArray()) assertTrue(entry.typed, CENTERS.containsKey(c));
         }
     }
+
+    @Test
+    public void completionsStartWithThePrefixCommonestFirst() {
+        List<String> words = dictionary.complete("he", 3);
+        assertEquals(3, words.size());
+        int lastRank = -1;
+        for (String word : words) {
+            assertTrue(word, word.startsWith("he"));
+            int rank = -1;
+            for (PadSwipe.Entry entry : dictionary.entries) if (entry.typed.equals(word)) rank = entry.rank;
+            assertTrue(word + " out of order", rank >= lastRank);
+            lastRank = rank;
+        }
+    }
+
+    @Test
+    public void completionsCanFinishAContraction() {
+        assertTrue(dictionary.complete("don'", 3).contains("don't"));
+        assertTrue(dictionary.complete("don", 20).contains("don't"));
+    }
+
+    @Test
+    public void completionsAreEmptyForNothingOrNoMatch() {
+        assertTrue(dictionary.complete("", 3).isEmpty());
+        assertTrue(dictionary.complete("zzzq", 3).isEmpty());
+    }
+
+    @Test
+    public void gameWordsCompleteToo() {
+        assertTrue(dictionary.complete("agg", 5).contains("aggro"));
+    }
 }

@@ -230,6 +230,38 @@ public class PadInputTest {
     }
 
     @Test
+    public void typeWordSaysHowItWasCapitalised() {
+        assertEquals(PadInput.Caps.NONE, input.typeWord("hi"));
+        input.toggleModifier(SHIFT);
+        assertEquals(PadInput.Caps.FIRST, input.typeWord("hi"));
+        input.lockModifier(SHIFT);
+        assertEquals(PadInput.Caps.ALL, input.typeWord("hi"));
+    }
+
+    @Test
+    public void replacingAWordErasesItThenTypesTheNewOne() {
+        input.replaceWord(3, "yo", PadInput.Caps.NONE);
+        later.runAll();
+        assertEquals(Arrays.asList("+08/0", "-08/0", "+08/0", "-08/0", "+08/0", "-08/0",
+                "+59/0", "-59/0", "+4F/0", "-4F/0", "+20/0", "-20/0"), host.events);
+    }
+
+    @Test
+    public void aReplacementKeepsTheFirstLettersCapital() {
+        input.replaceWord(0, "yo", PadInput.Caps.FIRST);
+        later.runAll();
+        assertEquals(Arrays.asList("+A0/0", "+59/1", "-59/1", "-A0/0", "+4F/0", "-4F/0", "+20/0", "-20/0"), host.events);
+    }
+
+    @Test
+    public void aReplacementCanBeAllCapitalsAndLeavesApostrophesAlone() {
+        input.replaceWord(0, "i'm", PadInput.Caps.ALL);
+        later.runAll();
+        assertEquals(Arrays.asList("+A0/0", "+49/1", "-49/1", "-A0/0", "+DE/0", "-DE/0",
+                "+A0/0", "+4D/1", "-4D/1", "-A0/0", "+20/0", "-20/0"), host.events);
+    }
+
+    @Test
     public void mouseButtonStaysDownUntilEveryHolderLetsGo() {
         input.toggleHold();
         input.mouseButton(ActionPadKeyMap.MOUSE_LEFT, true);

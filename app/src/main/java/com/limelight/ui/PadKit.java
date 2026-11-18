@@ -158,6 +158,11 @@ final class PadKit {
      * finger lifts (not when the touch is cancelled).
      */
     TextView keyButton(Slot slot, String label, float baseSp, boolean modified, Runnable afterRelease) {
+        return keyButton(slot, label, baseSp, modified, afterRelease, null);
+    }
+
+    /** Same, and {@code onPress} runs when the finger lands, just before the key goes down (so armed Shift is still armed). */
+    TextView keyButton(Slot slot, String label, float baseSp, boolean modified, Runnable afterRelease, Runnable onPress) {
         int edge = slot.color != 0 ? slot.color : theme.border;
         int accent = slot.color != 0 ? slot.color : theme.accent;
         final PadInput.Press[] held = {null};
@@ -165,6 +170,7 @@ final class PadKit {
                 new PressHandler() {
                     @Override
                     public void down() {
+                        if (onPress != null) onPress.run();
                         held[0] = input.press(slot);
                     }
 
