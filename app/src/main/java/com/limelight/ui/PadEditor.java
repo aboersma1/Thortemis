@@ -137,6 +137,17 @@ final class PadEditor extends LinearLayout {
             }));
         }
         list.addView(chipRows(layouts, 3));
+        list.addView(heading("Swipe typing (beta)"));
+        list.addView(note("Slide a finger across the letters to type a word. While on, letters type when you lift your finger. Off by default."));
+        List<View> swipe = new ArrayList<>();
+        for (final boolean on : new boolean[]{false, true}) {
+            swipe.add(choice(on ? "On (beta)" : "Off", kit.settings.swipeTyping == on, () -> {
+                kit.settings.saveSwipeTyping(on);
+                onChanged.run();
+                showMainInPlace();
+            }));
+        }
+        list.addView(chipRows(swipe, 2));
         list.addView(heading("Profiles"));
         for (int i = 1; i <= ActionPadSettings.PROFILE_SLOTS; i++) list.addView(profileRow(i));
         list.addView(heading("Reset"));

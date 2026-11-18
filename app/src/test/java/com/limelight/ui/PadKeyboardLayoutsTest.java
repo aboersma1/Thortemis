@@ -169,4 +169,29 @@ public class PadKeyboardLayoutsTest {
             assertTrue(key, (" " + first.replaceAll(":[0-9.]+", "") + " ").contains(" " + key + " "));
         }
     }
+
+    @Test
+    public void letterCentersSitInTheMiddleOfTheirKeys() {
+        String[] layer = PadKeyboardLayouts.layers(PadKeyboardLayouts.LAYERS)[0];
+        java.util.Map<Character, float[]> centers = PadKeyboardLayouts.letterCenters(layer, 1000f, 500f);
+        assertEquals(26, centers.size());
+        // Row 2 is ten equal keys on 1000 px: q is the first, p the tenth. Rows are 100 px tall; row 2 is the second.
+        assertEquals(50f, centers.get('q')[0], 0.01f);
+        assertEquals(950f, centers.get('p')[0], 0.01f);
+        assertEquals(150f, centers.get('q')[1], 0.01f);
+        // Row 4 starts with Shift at 1.5 of 10 units, so z is centred 2 units in.
+        assertEquals(200f, centers.get('z')[0], 0.01f);
+        assertEquals(350f, centers.get('z')[1], 0.01f);
+    }
+
+    @Test
+    public void keyAtFindsTheKeyUnderAPoint() {
+        String[] layer = PadKeyboardLayouts.layers(PadKeyboardLayouts.LAYERS)[0];
+        assertEquals("q", PadKeyboardLayouts.keyAt(layer, 1000f, 500f, 40f, 150f));
+        assertEquals("Shift", PadKeyboardLayouts.keyAt(layer, 1000f, 500f, 100f, 350f));
+        assertEquals("z", PadKeyboardLayouts.keyAt(layer, 1000f, 500f, 200f, 350f));
+        assertEquals("Bksp", PadKeyboardLayouts.keyAt(layer, 1000f, 500f, 990f, 350f));
+        assertEquals(null, PadKeyboardLayouts.keyAt(layer, 1000f, 500f, -1f, 10f));
+        assertEquals(null, PadKeyboardLayouts.keyAt(layer, 1000f, 500f, 10f, 500f));
+    }
 }

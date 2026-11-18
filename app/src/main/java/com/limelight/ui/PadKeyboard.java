@@ -28,19 +28,26 @@ final class PadKeyboard extends LinearLayout {
     /** Runs after Enter or Esc, to leave a chat the keyboard was opened for. May be null. */
     private final Runnable onSubmit;
     private boolean captureShift;
+    /** Swipe typing is on (a setting, beta): letters type when the finger lifts, and a slide across them types a word. */
+    private final boolean swipe;
 
     PadKeyboard(PadKit kit, Capture capture, Runnable onSubmit) {
         super(kit.context);
         this.kit = kit;
         this.capture = capture;
         this.onSubmit = onSubmit;
+        this.swipe = capture == null && kit.settings.swipeTyping;
+        if (swipe) PadSwipeDictionary.load(kit.context);
         setOrientation(VERTICAL);
         setMotionEventSplittingEnabled(true);
 
         // Renaming a button always uses the classic layout, without the keys that only make sense in the game.
         String[][] layers = PadKeyboardLayouts.layers(capture == null ? kit.settings.keyboardLayout : PadKeyboardLayouts.CLASSIC);
-        for (String[] rows : layers) {
-            LinearLayout layer = kit.box(VERTICAL);
+        for (final String[] rows : layers) {
+            // Swipe typing watches the first layer, where the letters are.
+            LinearLayout layer = swipe && rows == layers[0]
+                    ? new PadSwipeLayer(kit, rows, word -> kit.input.typeWord(word))
+                    : kit.box(VERTICAL);
             for (String row : rows) layer.addView(buildRow(row), new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
             layerViews.add(layer);
             addView(layer, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
@@ -117,11 +124,29 @@ final class PadKeyboard extends LinearLayout {
         String pair = ActionPadKeyMap.typingPair(c);
         final String plain = pair.substring(0, 1), upper = pair.substring(1);
         ActionPadKeyMap.Slot slot = ActionPadKeyMap.key(plain, ActionPadKeyMap.vkOf(c));
+        final boolean letter = c >= 'a' && c <= 'z';
         final TextView key = capture == null
-                ? kit.keyButton(slot, plain, 15, false, null)
+                ? (swipe && letter ? swipeLetter(slot, plain) : kit.keyButton(slot, plain, 15, false, null))
                 : kit.tapButton(plain, 15, () -> capture.onChar(shifted() ? upper : plain));
         kit.addRefresher(() -> key.setText(shifted() ? upper : plain));
         return key;
+    }
+
+    /**
+     * A letter while swipe typing is on. It types when the finger lifts, not when it lands, because only then
+     * is it known that the touch was a tap and not the start of a swipe.
+     */
+    private TextView swipeLetter(final ActionPadKeyMap.Slot slot, String label) {
+        return kit.pressButton(label, 15, kit.theme.face, kit.theme.border, kit.theme.accent, new PadKit.PressHandler() {
+            @Override
+            public void down() { }
+
+            @Override
+            public void up(boolean cancelled) {
+                if (cancelled) return;
+                kit.input.release(kit.input.press(slot));
+            }
+        });
     }
 
     /** A non-typing key: sends {@code vk} to the host, or runs {@code onCapture} while renaming (no key if that is null). */

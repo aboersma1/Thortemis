@@ -210,6 +210,34 @@ final class PadInput {
         }
     }
 
+    /**
+     * Types a word and a space, as a swipe on the keyboard does. Armed Shift capitalises the first letter, or
+     * every letter while it is locked. Ctrl and Alt are let go, since a word is not a shortcut.
+     */
+    void typeWord(String word) {
+        for (int mod : new ArrayList<>(armed)) if (mod != ActionPadKeyMap.VK_LSHIFT) disarm(mod);
+        onChanged.run();
+        int[] codes = ActionPadKeyMap.typingKeys(word + " ");
+        final byte lockedMask = isLocked(ActionPadKeyMap.VK_LSHIFT) ? ActionPadKeyMap.modifierFlag(ActionPadKeyMap.VK_LSHIFT) : 0;
+        long delay = 0;
+        for (int i = 0; i < codes.length; i++) {
+            final short key = (short) (codes[i] & 0xFF);
+            if (i == 0 && isArmed(ActionPadKeyMap.VK_LSHIFT)) {
+                // The first letter goes out now, while the armed Shift is down; a one-shot Shift lets go after it.
+                byte mask = heldMask();
+                sink.sendKey(key, true, mask);
+                sink.sendKey(key, false, mask);
+                releaseOneShot();
+                continue;
+            }
+            scheduler.post(() -> {
+                sink.sendKey(key, true, lockedMask);
+                sink.sendKey(key, false, lockedMask);
+            }, delay);
+            delay += MACRO_STEP_MS;
+        }
+    }
+
     // --- Mouse ---
 
     void moveMouse(short dx, short dy) {

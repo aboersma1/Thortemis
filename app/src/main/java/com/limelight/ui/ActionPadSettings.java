@@ -27,6 +27,7 @@ public final class ActionPadSettings {
     private static final String KEY_TOUCH_SPEED = "list_action_pad_touch_speed";
     private static final String KEY_TAP_CLICK = "checkbox_action_pad_tap_click";
     private static final String KEY_KEYBOARD = "list_action_pad_keyboard_layout";
+    private static final String KEY_SWIPE = "checkbox_action_pad_swipe_typing_beta";
     private static final String KEY_SCROLL = "checkbox_action_pad_scroll";
     private static final String KEY_SCROLL_LEFT = "checkbox_action_pad_scroll_left";
     private static final String KEY_SCROLL_INVERT = "checkbox_action_pad_scroll_invert";
@@ -61,6 +62,8 @@ public final class ActionPadSettings {
     /** The scroll strip beside the touchpad, which side it is on, and which way a downward drag scrolls. */
     /** The id of the keyboard tab's layout, see {@link PadKeyboardLayouts}. */
     public String keyboardLayout;
+    /** Swipe typing (beta), off unless the player turns it on in Edit. */
+    public boolean swipeTyping;
     public final boolean scrollStrip;
     public final boolean scrollLeft;
     public final boolean scrollInvert;
@@ -93,6 +96,7 @@ public final class ActionPadSettings {
         touchSpeed = number(p, KEY_TOUCH_SPEED, 22) / 10f;
         tapToClick = p.getBoolean(KEY_TAP_CLICK, true);
         keyboardLayout = p.getString(KEY_KEYBOARD, PadKeyboardLayouts.DEFAULT);
+        swipeTyping = p.getBoolean(KEY_SWIPE, false);
         scrollStrip = p.getBoolean(KEY_SCROLL, true);
         scrollLeft = p.getBoolean(KEY_SCROLL_LEFT, false);
         scrollInvert = p.getBoolean(KEY_SCROLL_INVERT, false);
@@ -126,6 +130,11 @@ public final class ActionPadSettings {
     public void saveTheme(ActionPadTheme chosen) {
         theme = chosen;
         prefs.edit().putString(KEY_THEME, chosen.id).apply();
+    }
+
+    public void saveSwipeTyping(boolean on) {
+        swipeTyping = on;
+        prefs.edit().putBoolean(KEY_SWIPE, on).apply();
     }
 
     public void saveKeyboardLayout(String id) {

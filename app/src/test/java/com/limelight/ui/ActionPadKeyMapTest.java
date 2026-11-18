@@ -300,4 +300,13 @@ public class ActionPadKeyMapTest {
         assertTrue(find("Reply").opensKeyboard);
         assertTrue(find("Sit").macro != null && !find("Sit").opensKeyboard);
     }
+
+    @Test
+    public void typingKeysTypeWordsWithoutEnter() {
+        int[] keys = ActionPadKeyMap.typingKeys("don't ");
+        assertEquals(6, keys.length);
+        assertEquals('D', keys[0]);
+        assertEquals(0xDE, keys[3]);
+        assertEquals(ActionPadKeyMap.VK_SPACE, keys[5]);
+    }
 }

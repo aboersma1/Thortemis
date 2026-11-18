@@ -186,6 +186,50 @@ public class PadInputTest {
     }
 
     @Test
+    public void aSwipedWordIsTypedWithASpaceAfterIt() {
+        input.typeWord("hi");
+        later.runAll();
+        assertEquals(Arrays.asList("+48/0", "-48/0", "+49/0", "-49/0", "+20/0", "-20/0"), host.events);
+    }
+
+    @Test
+    public void aSwipedWordTakesAnArmedShiftForItsFirstLetterOnly() {
+        input.toggleModifier(SHIFT);
+        host.events.clear();
+        input.typeWord("hi");
+        later.runAll();
+        assertEquals(Arrays.asList("+48/1", "-48/1", "-A0/0", "+49/0", "-49/0", "+20/0", "-20/0"), host.events);
+        assertFalse(input.isArmed(SHIFT));
+    }
+
+    @Test
+    public void aSwipedWordIsAllCapitalsWhileShiftIsLocked() {
+        input.lockModifier(SHIFT);
+        host.events.clear();
+        input.typeWord("hi");
+        later.runAll();
+        assertEquals(Arrays.asList("+48/1", "-48/1", "+49/1", "-49/1", "+20/1", "-20/1"), host.events);
+        assertTrue(input.isLocked(SHIFT));
+    }
+
+    @Test
+    public void aSwipedWordLetsGoOfCtrlAndAlt() {
+        input.toggleModifier(ActionPadKeyMap.VK_LCONTROL);
+        host.events.clear();
+        input.typeWord("hi");
+        later.runAll();
+        assertEquals("-A2/0", host.events.get(0));
+        assertFalse(input.anyArmed());
+    }
+
+    @Test
+    public void aSwipedWordCanHaveAnApostrophe() {
+        input.typeWord("i'm");
+        later.runAll();
+        assertEquals(Arrays.asList("+49/0", "-49/0", "+DE/0", "-DE/0", "+4D/0", "-4D/0", "+20/0", "-20/0"), host.events);
+    }
+
+    @Test
     public void mouseButtonStaysDownUntilEveryHolderLetsGo() {
         input.toggleHold();
         input.mouseButton(ActionPadKeyMap.MOUSE_LEFT, true);

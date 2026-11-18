@@ -76,6 +76,40 @@ final class PadKeyboardLayouts {
         return colon > 0 ? Float.parseFloat(token.substring(colon + 1)) : 1f;
     }
 
+    /** Centre of every single-letter key on a layer drawn {@code width} by {@code height} pixels, in pixels. */
+    static java.util.Map<Character, float[]> letterCenters(String[] layer, float width, float height) {
+        java.util.Map<Character, float[]> out = new java.util.HashMap<>();
+        float rowHeight = height / layer.length;
+        for (int r = 0; r < layer.length; r++) {
+            String[] tokens = layer[r].split(" ");
+            float total = 0;
+            for (String t : tokens) total += weight(t);
+            float at = 0;
+            for (String t : tokens) {
+                String name = keyName(t);
+                if (name.length() == 1 && name.charAt(0) >= 'a' && name.charAt(0) <= 'z') {
+                    out.put(name.charAt(0), new float[]{(at + weight(t) / 2) / total * width, (r + 0.5f) * rowHeight});
+                }
+                at += weight(t);
+            }
+        }
+        return out;
+    }
+
+    /** The name of the key under a point of a layer drawn {@code width} by {@code height} pixels, or null outside it. */
+    static String keyAt(String[] layer, float width, float height, float x, float y) {
+        if (x < 0 || y < 0 || x >= width || y >= height) return null;
+        String[] tokens = layer[(int) (y / (height / layer.length))].split(" ");
+        float total = 0;
+        for (String t : tokens) total += weight(t);
+        float at = 0;
+        for (String t : tokens) {
+            at += weight(t);
+            if (x < at / total * width) return keyName(t);
+        }
+        return null;
+    }
+
     /** The Windows key code of a named key that is not a letter, digit or modifier, or -1 if there is none. */
     static int namedKeyVk(String name) {
         switch (name) {

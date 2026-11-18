@@ -363,6 +363,16 @@ public final class ActionPadKeyMap {
         throw new IllegalArgumentException("Unsupported macro character '" + c + "' in " + text);
     }
 
+    /**
+     * The key codes that type {@code text} with no Enter around it, such as a word typed by swiping. Each code is a
+     * key code, with {@link #MACRO_SHIFT} added when the character needs Shift.
+     */
+    public static int[] typingKeys(String text) {
+        int[] keys = new int[text.length()];
+        for (int i = 0; i < keys.length; i++) keys[i] = macroCode(text.charAt(i), text);
+        return keys;
+    }
+
     /** Whether {@code text} is a chat line a button can type: every character typeable, and not too long. */
     public static boolean canType(String text) {
         if (text == null || text.isEmpty() || text.length() > MAX_MACRO) return false;
