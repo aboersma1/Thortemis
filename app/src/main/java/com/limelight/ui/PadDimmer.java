@@ -15,6 +15,10 @@ final class PadDimmer {
 
     private final View view;
     private long idleMs;
+    private long sleepMs;
+    private Runnable onSleep = () -> { };
+    private Runnable onWake = () -> { };
+    private boolean asleep = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean enabled = true;
     private boolean dimmed = false;
@@ -34,6 +38,19 @@ final class PadDimmer {
         }
     };
 
+    private final Runnable sleepCheck = new Runnable() {
+        @Override
+        public void run() {
+            long remaining = sleepMs - (SystemClock.uptimeMillis() - lastTouch);
+            if (touching || remaining > 0) {
+                handler.postDelayed(this, touching ? sleepMs : remaining);
+                return;
+            }
+            asleep = true;
+            onSleep.run();
+        }
+    };
+
     /** {@code idleMs} of 0 means never dim. */
     PadDimmer(View view, long idleMs) {
         this.view = view;
@@ -47,6 +64,20 @@ final class PadDimmer {
         start();
     }
 
+    /** The screen saver: after {@code sleepMs} idle (0 = never) {@code sleep} runs, and {@code wake} on the next touch. */
+    void setSaver(long sleepMs, Runnable sleep, Runnable wake) {
+        this.onSleep = sleep;
+        this.onWake = wake;
+        if (sleepMs == this.sleepMs) return;
+        this.sleepMs = sleepMs;
+        start();
+    }
+
+    /** True while the saver is showing. */
+    boolean isAsleep() {
+        return asleep;
+    }
+
     /** Off when the host screen already dims itself. */
     void setEnabled(boolean enabled) {
         this.enabled = enabled;
@@ -57,12 +88,15 @@ final class PadDimmer {
     void start() {
         lastTouch = SystemClock.uptimeMillis();
         handler.removeCallbacks(check);
+        handler.removeCallbacks(sleepCheck);
         brighten();
         if (enabled && idleMs > 0) handler.postDelayed(check, idleMs);
+        if (enabled && sleepMs > 0) handler.postDelayed(sleepCheck, sleepMs);
     }
 
     void stop() {
         handler.removeCallbacks(check);
+        handler.removeCallbacks(sleepCheck);
         brighten();
     }
 
@@ -71,10 +105,14 @@ final class PadDimmer {
         int action = event.getActionMasked();
         lastTouch = SystemClock.uptimeMillis();
         touching = action != MotionEvent.ACTION_UP && action != MotionEvent.ACTION_CANCEL;
-        if (dimmed) start();
+        if (dimmed || asleep) start();
     }
 
     private void brighten() {
+        if (asleep) {
+            asleep = false;
+            onWake.run();
+        }
         if (dimmed) {
             dimmed = false;
             view.animate().cancel();

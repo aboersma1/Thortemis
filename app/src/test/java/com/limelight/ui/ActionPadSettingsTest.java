@@ -43,6 +43,17 @@ public class ActionPadSettingsTest {
         assertEquals(expected, values);
     }
 
+    @Test
+    public void screenSaverChoicesAreOffThenOneTwoAndThreeMinutes() {
+        
+        int[] s = ActionPadSettings.SAVER_SECONDS;
+        assertEquals(4, s.length);
+        assertEquals(0, s[0]);
+        assertEquals(60, s[1]);
+        assertEquals(120, s[2]);
+        assertEquals(180, s[3]);
+    }
+
     private static List<String> arrayItems(String name) throws Exception {
         String xml = new String(Files.readAllBytes(new File("src/main/res/values/action_pad_arrays.xml").toPath()), "UTF-8");
         Matcher block = Pattern.compile("<string-array name=\"" + name + "\">(.*?)</string-array>", Pattern.DOTALL).matcher(xml);

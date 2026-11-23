@@ -19,6 +19,7 @@ public final class ActionPadSettings {
     private static final int TABS_VERSION = 2;
     private static final String KEY_THEME = "list_action_pad_theme";
     private static final String KEY_DIM = "list_action_pad_dim";
+    private static final String KEY_SAVER = "list_action_pad_saver";
     private static final String KEY_SIDE_BY_SIDE = "checkbox_action_pad_side_by_side";
     private static final String KEY_SWAP_SIDES = "checkbox_action_pad_swap_sides";
     private static final String KEY_TABS_BOTTOM = "checkbox_action_pad_tabs_bottom";
@@ -41,6 +42,8 @@ public final class ActionPadSettings {
     public static final int PROFILE_SLOTS = 3;
     /** The idle times the player can pick, in seconds; 0 means never dim. Matches action_pad_dim_values. */
     public static final int[] DIM_SECONDS = {3, 5, 10, 20, 60, 0};
+    /** Idle times for the screen saver, which blacks the pad out completely; 0 means never. */
+    public static final int[] SAVER_SECONDS = {0, 60, 120, 180};
     /** The F-keys page is hidden unless the player turns it on. */
     private static final String HIDDEN_BY_DEFAULT = "fkeys";
 
@@ -49,6 +52,8 @@ public final class ActionPadSettings {
     public ActionPadTheme theme;
     /** Idle time before the pad dims, or 0 for never. */
     public long dimMs;
+    /** Idle time before the screen saver blacks the pad out; 0 = never. */
+    public long saverMs;
     /** Interface, Target, Utility and the other key pages at once, instead of one tab each. */
     public final boolean sideBySide;
     public final boolean swapSides;
@@ -88,6 +93,7 @@ public final class ActionPadSettings {
         shownTabs = tabs;
         theme = ActionPadTheme.byId(p.getString(KEY_THEME, ActionPadTheme.DEFAULT_ID));
         dimMs = number(p, KEY_DIM, 10) * 1000L;
+        saverMs = number(p, KEY_SAVER, 0) * 1000L;
         sideBySide = p.getBoolean(KEY_SIDE_BY_SIDE, false);
         swapSides = p.getBoolean(KEY_SWAP_SIDES, false);
         tabsBottom = p.getBoolean(KEY_TABS_BOTTOM, false);
@@ -151,6 +157,11 @@ public final class ActionPadSettings {
     public void saveDimSeconds(int seconds) {
         dimMs = seconds * 1000L;
         prefs.edit().putString(KEY_DIM, String.valueOf(seconds)).apply();
+    }
+
+    public void saveSaverSeconds(int seconds) {
+        saverMs = seconds * 1000L;
+        prefs.edit().putString(KEY_SAVER, String.valueOf(seconds)).apply();
     }
 
     public void saveConfig() {

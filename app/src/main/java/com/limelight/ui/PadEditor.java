@@ -126,6 +126,17 @@ final class PadEditor extends LinearLayout {
             }));
         }
         list.addView(chipRows(fades, 3));
+        list.addView(heading("Screen saver (protects the screen)"));
+        list.addView(note("Turns the pad fully black after it is left alone, so nothing stays lit on the screen. Touch to wake it; that first touch does not press a button."));
+        List<View> savers = new ArrayList<>();
+        for (final int seconds : ActionPadSettings.SAVER_SECONDS) {
+            savers.add(choice(seconds == 0 ? "Off" : seconds + " s", kit.settings.saverMs == seconds * 1000L, () -> {
+                kit.settings.saveSaverSeconds(seconds);
+                onChanged.run();
+                showMainInPlace();
+            }));
+        }
+        list.addView(chipRows(savers, 4));
         list.addView(heading("Keyboard layout"));
         List<View> layouts = new ArrayList<>();
         for (int i = 0; i < PadKeyboardLayouts.IDS.length; i++) {

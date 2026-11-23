@@ -6,6 +6,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -66,6 +67,10 @@ public class ExternalActionPadView extends FrameLayout {
     private final PadKit kit;
     private final PadEditor editor;
     private final PadDimmer dimmer;
+    /** Solid black cover shown by the screen saver. */
+    private final View saver;
+    /** True from the touch that woke the saver until it lifts, so the waking touch presses nothing. */
+    private boolean swallowing = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final List<Tab> tabs = new ArrayList<>();
     private final List<TextView> tabViews = new ArrayList<>();
@@ -80,6 +85,9 @@ public class ExternalActionPadView extends FrameLayout {
         super(context);
         settings = ActionPadSettings.load(context);
         dimmer = new PadDimmer(this, settings.dimMs);
+        saver = new View(context);
+        saver.setBackgroundColor(0xFF000000);
+        saver.setVisibility(GONE);
         input = new PadInput(sink, new PadInput.Scheduler() {
             @Override
             public void post(Runnable task, long delayMs) {
@@ -141,6 +149,7 @@ public class ExternalActionPadView extends FrameLayout {
         setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{settings.theme.bgTop, settings.theme.bg}));
         dimmer.setIdleMs(settings.dimMs);
+        dimmer.setSaver(settings.saverMs, this::showSaver, this::hideSaver);
         kit.forget();
         input.releaseKeys();
         input.releaseMouse();
@@ -353,8 +362,29 @@ public class ExternalActionPadView extends FrameLayout {
     /** Any touch brings the pad back to full brightness and still counts as a normal press. */
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        boolean wasAsleep = dimmer.isAsleep();
         dimmer.onTouch(ev);
+        int action = ev.getActionMasked();
+        if (wasAsleep) swallowing = true;
+        if (swallowing) {
+            if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) swallowing = false;
+            return true;
+        }
         return super.dispatchTouchEvent(ev);
+    }
+
+    private void showSaver() {
+        // Keys held down when the screen goes black must not stay pressed on the host.
+        input.releaseAll();
+        if (saver.getParent() == null) {
+            addView(saver, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        saver.setVisibility(VISIBLE);
+        saver.bringToFront();
+    }
+
+    private void hideSaver() {
+        saver.setVisibility(GONE);
     }
 
     @Override
