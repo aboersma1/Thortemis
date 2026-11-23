@@ -84,13 +84,32 @@ final class PadEditor extends LinearLayout {
         list.addView(note("Tap a tab to show or hide it. The last one stays on. Open chat needs the Keyboard tab."));
         List<View> tabChips = new ArrayList<>();
         for (final String id : ActionPadKeyMap.tabIds()) {
-            tabChips.add(choice(ActionPadKeyMap.tabTitle(id), kit.settings.shownTabs.contains(id), () -> {
+            tabChips.add(choice(tabName(id), kit.settings.shownTabs.contains(id), () -> {
                 kit.settings.toggleTab(id);
                 onChanged.run();
                 showMainInPlace();
             }));
         }
         list.addView(chipRows(tabChips, 4));
+        list.addView(heading("Tab settings"));
+        list.addView(note("Pick a tab to rename it, or choose what sits on its right: the number block, nothing, or another tab's buttons."));
+        List<View> settingChips = new ArrayList<>();
+        for (final String id : ActionPadKeyMap.tabIds()) {
+            if (!kit.settings.shownTabs.contains(id)) continue;
+            settingChips.add(kit.tapButton(tabName(id), 13, () -> showTabSettings(id)));
+        }
+        list.addView(chipRows(settingChips, 4));
+        list.addView(heading("Button labels"));
+        list.addView(note("Interface and Utility buttons (Bags, Map, Character and so on) can show an icon instead of words."));
+        List<View> labels = new ArrayList<>();
+        for (final boolean icons : new boolean[]{false, true}) {
+            labels.add(choice(icons ? "Icons" : "Text", kit.settings.iconButtons == icons, () -> {
+                kit.settings.saveIconButtons(icons);
+                onChanged.run();
+                showMainInPlace();
+            }));
+        }
+        list.addView(chipRows(labels, 2));
         list.addView(heading("Buttons"));
         list.addView(note("Tap a button to change its key, name or colour, or to hide or move it."));
         for (final Group group : groups) {
@@ -137,6 +156,15 @@ final class PadEditor extends LinearLayout {
             }));
         }
         list.addView(chipRows(savers, 4));
+        List<View> styles = new ArrayList<>();
+        for (final boolean logo : new boolean[]{false, true}) {
+            styles.add(choice(logo ? "Bouncing logo" : "Black screen", kit.settings.saverLogo == logo, () -> {
+                kit.settings.saveSaverLogo(logo);
+                onChanged.run();
+                showMainInPlace();
+            }));
+        }
+        list.addView(chipRows(styles, 2));
         list.addView(heading("Keyboard layout"));
         List<View> layouts = new ArrayList<>();
         for (int i = 0; i < PadKeyboardLayouts.IDS.length; i++) {
@@ -302,6 +330,80 @@ final class PadEditor extends LinearLayout {
             }
         }, null);
         column.addView(keyboard, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
+    }
+
+    private String tabName(String id) {
+        return kit.settings.tabOptions.name(id, ActionPadKeyMap.tabTitle(id));
+    }
+
+    /** A tab's name, and what sits on its right. */
+    private void showTabSettings(final String id) {
+        final PadTabOptions options = kit.settings.tabOptions;
+        LinearLayout list = screen("Tab: " + tabName(id), "Back", this::showMain, true);
+        list.addView(heading("Name"));
+        List<View> names = new ArrayList<>();
+        names.add(kit.tapButton("Rename", 13, () -> showTabName(id)));
+        if (options.hasName(id)) {
+            names.add(kit.tapButton("Use \"" + ActionPadKeyMap.tabTitle(id) + "\"", 13, () -> {
+                options.setName(id, "");
+                tabOptionsChanged();
+                showTabSettings(id);
+            }));
+        }
+        list.addView(chipRows(names, 2));
+        if (PadTabOptions.canChooseSide(id)) {
+            list.addView(heading("On the right"));
+            list.addView(note("Numbers is the usual number block. Nothing gives this tab's buttons the whole width. Or show another tab's buttons here."));
+            List<View> sides = new ArrayList<>();
+            for (final String choice : PadTabOptions.sideChoices(id)) {
+                String label = choice.equals(PadTabOptions.NUMBERS) ? "Numbers"
+                        : choice.equals(PadTabOptions.HIDDEN) ? "Nothing" : tabName(choice);
+                sides.add(choice(label, options.side(id).equals(choice), () -> {
+                    options.setSide(id, choice);
+                    tabOptionsChanged();
+                    showTabSettings(id);
+                }));
+            }
+            list.addView(chipRows(sides, 3));
+        } else {
+            list.addView(note(id.equals("target")
+                    ? "The Target tab always keeps the number block."
+                    : "This tab uses the whole screen, so it has no right side."));
+        }
+    }
+
+    /** Typing a tab's new name on the pad's own keyboard. Enter saves it. */
+    private void showTabName(final String id) {
+        LinearLayout column = screen("Name for \"" + ActionPadKeyMap.tabTitle(id) + "\"", "Cancel", () -> showTabSettings(id), false);
+        final StringBuilder text = new StringBuilder(kit.settings.tabOptions.name(id, ""));
+        final TextView preview = kit.text(text + "|", 16);
+        column.addView(preview, new LayoutParams(LayoutParams.MATCH_PARENT, kit.dp(64)));
+        PadKeyboard keyboard = new PadKeyboard(kit, new PadKeyboard.Capture() {
+            @Override
+            public void onChar(String typed) {
+                if (text.length() < PadTabOptions.MAX_NAME) text.append(typed);
+                preview.setText(text + "|");
+            }
+
+            @Override
+            public void onBackspace() {
+                if (text.length() > 0) text.deleteCharAt(text.length() - 1);
+                preview.setText(text + "|");
+            }
+
+            @Override
+            public void onDone() {
+                kit.settings.tabOptions.setName(id, text.toString());
+                tabOptionsChanged();
+                showTabSettings(id);
+            }
+        }, null);
+        column.addView(keyboard, new LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f));
+    }
+
+    private void tabOptionsChanged() {
+        kit.settings.saveTabOptions();
+        onChanged.run();
     }
 
     /** Typing a new chat line on the pad's own keyboard. Enter saves it. */

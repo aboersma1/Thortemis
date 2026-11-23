@@ -15,7 +15,7 @@ A more seamless experience with virtual display will be Artemis paired with [Apo
 
 Thortemis is a fork of Artemis that adds an **action pad** for two-screen handhelds such as the AYN Thor. While you stream a game from your PC with Apollo or Sunshine, the second (bottom) screen becomes a touch panel of keys, so you can reach your number bar, interface shortcuts and mouse without a keyboard. It was built for World of Warcraft but sends ordinary Windows key codes, so it works for any game or app.
 
-> **Status:** early release. The pad's logic has automated tests (119 unit tests), but the screens have so far only been checked by building them, not on many devices. Please report problems with your device model and a description of what you saw.
+> **Status:** early release. The pad's logic has automated tests (133 unit tests), but the screens have so far only been checked by building them, not on many devices. Please report problems with your device model and a description of what you saw.
 
 ## What you get
 
@@ -33,7 +33,9 @@ Thortemis is a fork of Artemis that adds an **action pad** for two-screen handhe
 - **Looks:** change theme and fade time from the Edit screen, even mid-stream. 15 themes (Alliance Blue default, Classic, TBC, Wrath, Cata, MoP, WoD, Legion, BfA, Shadowlands, Dragonflight, TWW, Midnight, OLED Black, Cyberpunk).
 - **Layout options:** show pages side by side, swap sides, put the tab bar at the bottom, change text size.
 - **Profiles:** save up to three layouts (for example one per character or spec) and swap between them with the Profile button in the tab bar.
-- **Screen saver:** in Edit, under Screen saver, pick Off, 60, 120 or 180 seconds. After that long untouched the pad goes fully black (no pixels lit on an OLED). Touch to wake it; that first touch is swallowed so it presses nothing. Held keys are released when it blacks out. Off by default; not tested on a device.
+- **Tab settings:** in Edit, under Tab settings, pick a tab to rename it (up to 12 letters), and for Interface, Utility, Chat and F-Keys choose what sits on its right: the number block, nothing (the buttons spread over the whole width), or another tab's buttons (for example Utility next to Interface). Target always keeps the numbers. Replies, Mouse and Keyboard use the whole screen.
+- **Icons:** in Edit, under Button labels, choose Icons to show pictures instead of words on the Interface buttons (Character, Spellbook, Bags, Map and so on) and the Utility buttons. Off by default; the icons are drawn by the app and have not been checked on a device.
+- **Screen saver:** in Edit, under Screen saver, pick Off, 60, 120 or 180 seconds. After that long untouched the pad goes fully black (no pixels lit on an OLED). Touch to wake it; that first touch is swallowed so it presses nothing. Held keys are released when it blacks out. Off by default; not tested on a device. Style: Black screen, or Bouncing logo (our own THORTEMIS wordmark drifting around and changing colour at each wall, like the old DVD player screensavers).
 - **Comfort:** the pad appears once the stream has started, dims when idle (3, 5, 10, 20 or 60 seconds, or never; 10 by default) and can vibrate on press (a setting, on by default).
 - **What's new:** a short notes screen shows once after each update, and again from Settings, What's new.
 

@@ -20,6 +20,9 @@ public final class ActionPadSettings {
     private static final String KEY_THEME = "list_action_pad_theme";
     private static final String KEY_DIM = "list_action_pad_dim";
     private static final String KEY_SAVER = "list_action_pad_saver";
+    private static final String KEY_SAVER_LOGO = "checkbox_action_pad_saver_logo";
+    private static final String KEY_ICONS = "checkbox_action_pad_icon_buttons";
+    private static final String KEY_TAB_OPTIONS = "action_pad_tab_options";
     private static final String KEY_SIDE_BY_SIDE = "checkbox_action_pad_side_by_side";
     private static final String KEY_SWAP_SIDES = "checkbox_action_pad_swap_sides";
     private static final String KEY_TABS_BOTTOM = "checkbox_action_pad_tabs_bottom";
@@ -54,6 +57,12 @@ public final class ActionPadSettings {
     public long dimMs;
     /** Idle time before the screen saver blacks the pad out; 0 = never. */
     public long saverMs;
+    /** The screen saver shows the bouncing Thortemis mark instead of plain black. */
+    public boolean saverLogo;
+    /** Interface and Utility buttons show icons instead of words. */
+    public boolean iconButtons;
+    /** Each tab's own name and what sits on its right. */
+    PadTabOptions tabOptions;
     /** Interface, Target, Utility and the other key pages at once, instead of one tab each. */
     public final boolean sideBySide;
     public final boolean swapSides;
@@ -94,6 +103,9 @@ public final class ActionPadSettings {
         theme = ActionPadTheme.byId(p.getString(KEY_THEME, ActionPadTheme.DEFAULT_ID));
         dimMs = number(p, KEY_DIM, 10) * 1000L;
         saverMs = number(p, KEY_SAVER, 0) * 1000L;
+        saverLogo = p.getBoolean(KEY_SAVER_LOGO, false);
+        iconButtons = p.getBoolean(KEY_ICONS, false);
+        tabOptions = PadTabOptions.parse(p.getString(KEY_TAB_OPTIONS, ""));
         sideBySide = p.getBoolean(KEY_SIDE_BY_SIDE, false);
         swapSides = p.getBoolean(KEY_SWAP_SIDES, false);
         tabsBottom = p.getBoolean(KEY_TABS_BOTTOM, false);
@@ -162,6 +174,20 @@ public final class ActionPadSettings {
     public void saveSaverSeconds(int seconds) {
         saverMs = seconds * 1000L;
         prefs.edit().putString(KEY_SAVER, String.valueOf(seconds)).apply();
+    }
+
+    public void saveSaverLogo(boolean on) {
+        saverLogo = on;
+        prefs.edit().putBoolean(KEY_SAVER_LOGO, on).apply();
+    }
+
+    public void saveIconButtons(boolean on) {
+        iconButtons = on;
+        prefs.edit().putBoolean(KEY_ICONS, on).apply();
+    }
+
+    void saveTabOptions() {
+        prefs.edit().putString(KEY_TAB_OPTIONS, tabOptions.serialize()).apply();
     }
 
     public void saveConfig() {

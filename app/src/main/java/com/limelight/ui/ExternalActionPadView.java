@@ -51,11 +51,13 @@ public class ExternalActionPadView extends FrameLayout {
 
     /** A tab: one or more pages of key buttons (several when shown side by side), the touchpad, or the keyboard. */
     private static final class Tab {
+        final String id;
         final String title;
         final Kind kind;
         final List<Page> pages;
 
-        Tab(String title, Kind kind, List<Page> pages) {
+        Tab(String id, String title, Kind kind, List<Page> pages) {
+            this.id = id;
             this.title = title;
             this.kind = kind;
             this.pages = pages;
@@ -68,7 +70,7 @@ public class ExternalActionPadView extends FrameLayout {
     private final PadEditor editor;
     private final PadDimmer dimmer;
     /** Solid black cover shown by the screen saver. */
-    private final View saver;
+    private final PadSaverView saver;
     /** True from the touch that woke the saver until it lifts, so the waking touch presses nothing. */
     private boolean swallowing = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -77,6 +79,8 @@ public class ExternalActionPadView extends FrameLayout {
     private final LinearLayout content;
     private LinearLayout pageHost;
     private LinearLayout rightColumn;
+    /** Holds another page's buttons in place of the number block, when the player chose one for the tab. */
+    private LinearLayout sideHost;
     private int tabIndex = 0;
     /** The tab to go back to when the keyboard, opened for chat, is done. -1 when it was not opened for chat. */
     private int chatReturnTab = -1;
@@ -85,8 +89,7 @@ public class ExternalActionPadView extends FrameLayout {
         super(context);
         settings = ActionPadSettings.load(context);
         dimmer = new PadDimmer(this, settings.dimMs);
-        saver = new View(context);
-        saver.setBackgroundColor(0xFF000000);
+        saver = new PadSaverView(context);
         saver.setVisibility(GONE);
         input = new PadInput(sink, new PadInput.Scheduler() {
             @Override
@@ -131,13 +134,27 @@ public class ExternalActionPadView extends FrameLayout {
             if (page.fullWidth) full.add(page); else shown.add(page);
         }
         if (settings.sideBySide && !shown.isEmpty()) {
-            tabs.add(new Tab("Pages", Kind.KEYS, shown));
+            tabs.add(new Tab("pages", "Pages", Kind.KEYS, shown));
         } else {
-            for (Page page : shown) tabs.add(new Tab(page.title, Kind.KEYS, Collections.singletonList(page)));
+            for (Page page : shown) tabs.add(new Tab(page.id, named(page.id, page.title), Kind.KEYS, Collections.singletonList(page)));
         }
-        for (Page page : full) tabs.add(new Tab(page.title, Kind.KEYS, Collections.singletonList(page)));
-        if (settings.shownTabs.contains(ActionPadKeyMap.MOUSE_TAB_ID)) tabs.add(new Tab("Mouse", Kind.MOUSE, Collections.<Page>emptyList()));
-        if (settings.shownTabs.contains(ActionPadKeyMap.KEYBOARD_TAB_ID)) tabs.add(new Tab("Keyboard", Kind.KEYBOARD, Collections.<Page>emptyList()));
+        for (Page page : full) tabs.add(new Tab(page.id, named(page.id, page.title), Kind.KEYS, Collections.singletonList(page)));
+        if (settings.shownTabs.contains(ActionPadKeyMap.MOUSE_TAB_ID)) {
+            tabs.add(new Tab(ActionPadKeyMap.MOUSE_TAB_ID, named(ActionPadKeyMap.MOUSE_TAB_ID, "Mouse"), Kind.MOUSE, Collections.<Page>emptyList()));
+        }
+        if (settings.shownTabs.contains(ActionPadKeyMap.KEYBOARD_TAB_ID)) {
+            tabs.add(new Tab(ActionPadKeyMap.KEYBOARD_TAB_ID, named(ActionPadKeyMap.KEYBOARD_TAB_ID, "Keyboard"), Kind.KEYBOARD, Collections.<Page>emptyList()));
+        }
+    }
+
+    private void applyBackground() {
+        setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{settings.theme.bgTop, settings.theme.bg}));
+    }
+
+    /** The tab's name: the player's own if they gave it one. */
+    private String named(String id, String fallback) {
+        return settings.tabOptions.name(id, fallback);
     }
 
     // --- Building the UI ---
@@ -146,8 +163,7 @@ public class ExternalActionPadView extends FrameLayout {
     private void rebuild() {
         // The editor may have changed the theme or the fade time.
         kit.applyTheme();
-        setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{settings.theme.bgTop, settings.theme.bg}));
+        applyBackground();
         dimmer.setIdleMs(settings.dimMs);
         dimmer.setSaver(settings.saverMs, this::showSaver, this::hideSaver);
         kit.forget();
@@ -165,8 +181,9 @@ public class ExternalActionPadView extends FrameLayout {
 
         pageHost = kit.box(LinearLayout.HORIZONTAL);
         rightColumn = kit.box(LinearLayout.VERTICAL);
+        sideHost = kit.box(LinearLayout.HORIZONTAL);
         LinearLayout body = kit.box(LinearLayout.HORIZONTAL);
-        View[] sides = settings.swapSides ? new View[]{rightColumn, pageHost} : new View[]{pageHost, rightColumn};
+        View[] sides = settings.swapSides ? new View[]{sideHost, rightColumn, pageHost} : new View[]{pageHost, rightColumn, sideHost};
         for (View side : sides) body.addView(side, new LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f));
         buildRightColumn();
 
@@ -265,7 +282,14 @@ public class ExternalActionPadView extends FrameLayout {
         Tab tab = tabs.get(tabIndex);
         pageHost.removeAllViews();
         // The touchpad, keyboard and full-screen pages take the whole width, so the number block steps aside.
-        rightColumn.setVisibility(tab.kind == Kind.KEYS && !tab.pages.get(0).fullWidth ? VISIBLE : GONE);
+        boolean ordinary = tab.kind == Kind.KEYS && !tab.pages.get(0).fullWidth;
+        String side = ordinary && tab.pages.size() == 1 ? settings.tabOptions.side(tab.id) : PadTabOptions.NUMBERS;
+        rightColumn.setVisibility(ordinary && side.equals(PadTabOptions.NUMBERS) ? VISIBLE : GONE);
+        sideHost.removeAllViews();
+        sideHost.setVisibility(GONE);
+        if (ordinary && !side.equals(PadTabOptions.NUMBERS) && !side.equals(PadTabOptions.HIDDEN)) {
+            for (Page other : ActionPadKeyMap.PAGES) if (other.id.equals(side)) fillSide(other);
+        }
         if (tab.kind == Kind.MOUSE) {
             input.releaseModifiers();
             pageHost.addView(new PadTouchpad(kit), kit.weighted(pageHost, 1f));
@@ -273,22 +297,40 @@ public class ExternalActionPadView extends FrameLayout {
             Runnable done = chatReturnTab >= 0 ? this::closeChatKeyboard : null;
             pageHost.addView(new PadKeyboard(kit, null, done), kit.weighted(pageHost, 1f));
         } else {
-            for (Page page : tab.pages) addPage(page);
+            for (Page page : tab.pages) addPage(page, ordinary && side.equals(PadTabOptions.HIDDEN));
         }
     }
 
-    private void addPage(Page page) {
+    /** Another page's buttons where the number block would be: columns of at most seven. */
+    private void fillSide(Page page) {
+        List<Slot> slots = settings.config.resolve(page.id, page.slots, false);
+        if (slots.isEmpty()) return;
+        sideHost.setVisibility(VISIBLE);
+        int columns = (slots.size() + 6) / 7;
+        int perColumn = (slots.size() + columns - 1) / columns;
+        for (int c = 0; c < columns; c++) {
+            LinearLayout column = kit.box(LinearLayout.VERTICAL);
+            for (Slot slot : slots.subList(c * perColumn, Math.min((c + 1) * perColumn, slots.size()))) {
+                column.addView(keyButton(slot, wrapLabel(slot.label), 13, false), kit.weighted(column, 1f));
+            }
+            sideHost.addView(column, kit.weighted(sideHost, 1f));
+        }
+    }
+
+    private void addPage(Page page, boolean wholeWidth) {
         List<Slot> slots = settings.config.resolve(page.id, page.slots, false);
         boolean single = tabs.get(tabIndex).pages.size() == 1;
         boolean wide = single && slots.size() > SINGLE_COLUMN_MAX;
+        // With nothing on the right the page has the whole width, so it spreads over more columns.
         int columns = page.fullWidth
                 ? Math.max(1, (slots.size() + ActionPadKeyMap.FULL_PAGE_ROWS - 1) / ActionPadKeyMap.FULL_PAGE_ROWS)
+                : wholeWidth && single ? Math.min(4, Math.max(2, (slots.size() + 5) / 6))
                 : wide ? 2 : 1;
         int perColumn = (slots.size() + columns - 1) / columns;
         for (int c = 0; c < columns; c++) {
             LinearLayout column = kit.box(LinearLayout.VERTICAL);
             for (Slot slot : slots.subList(Math.min(c * perColumn, slots.size()), Math.min((c + 1) * perColumn, slots.size()))) {
-                float sp = !single ? 12 : page.fullWidth ? 13 : wide ? 14 : 18;
+                float sp = !single ? 12 : page.fullWidth || wholeWidth ? 13 : wide ? 14 : 18;
                 column.addView(keyButton(slot, wrapLabel(slot.label), sp, false), kit.weighted(column, 1f));
             }
             pageHost.addView(column, kit.weighted(pageHost, 1f));
@@ -379,12 +421,17 @@ public class ExternalActionPadView extends FrameLayout {
         if (saver.getParent() == null) {
             addView(saver, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         }
+        // The pad has padding, so the cover alone would leave a lit border.
+        setBackgroundColor(0xFF000000);
         saver.setVisibility(VISIBLE);
         saver.bringToFront();
+        saver.run(true, settings.saverLogo);
     }
 
     private void hideSaver() {
+        saver.run(false, false);
         saver.setVisibility(GONE);
+        applyBackground();
     }
 
     @Override

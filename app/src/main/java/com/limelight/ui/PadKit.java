@@ -182,8 +182,19 @@ final class PadKit {
                     }
                 });
         view.setContentDescription(slot.label);
+        if (settings.iconButtons && PadIcons.has(slot.id)) showIcon(view, slot.id);
         if (modified) addRefresher(() -> view.setActivated(input.anyArmed()));
         return view;
+    }
+
+    /** Replaces the button's words with its icon, centred. */
+    private void showIcon(TextView view, String id) {
+        int size = Math.round(dp(28) * Math.max(0.8f, settings.labelScale));
+        android.graphics.drawable.Drawable icon = PadIcons.make(id, size, theme.text);
+        android.text.SpannableString icon1 = new android.text.SpannableString(" ");
+        icon1.setSpan(new android.text.style.ImageSpan(icon, android.text.style.ImageSpan.ALIGN_BOTTOM), 0, 1,
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        view.setText(icon1);
     }
 
     /** Shift, Ctrl or Alt: a tap arms it for the next key, a long press locks it. */
